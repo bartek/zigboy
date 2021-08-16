@@ -2,15 +2,38 @@ const std = @import("std");
 const print = std.debug.print;
 const Allocator = std.mem.Allocator;
 
+// Set a bit and return the new value
+fn set(value: u8, bit: u8) u8 {
+    return value | (1 << bit);
+}
+
+// TODO
+fn reset(value: u8, bit: u8) u8 {
+    //return value & ^(1 << bit);
+}
+
+
 const register = struct {
     value: u16,
 
     pub fn setLo(self: *register, value: u8) void {
-        self.value = u16(value) | u16(self.value)&0xFF00;
+        self.value = @intCast(u16, value) | @intCast(u16, self.value)&0xFF00;
     }
 
     pub fn setHi(self: *register, value: u8) void {
-        self.value = u16(val)<<8 | (u16(self.value) & 0xFF);
+        self.value = @intCast(u16, value)<<8 | (@intCast(u16, self.value) & 0xFF);
+    }
+
+    pub fn hilo(self: *register) u16 {
+        return self.value;
+    }
+
+    pub fn lo(self: *register) u8 {
+        return self.value & 0xFF;
+    }
+
+    pub fn hi(self: *register) u8 {
+        return @intCast(u8, self.value >> 8);
     }
 };
 
@@ -88,28 +111,94 @@ pub const CPU = struct {
 
     // tick ticks the CPU
     pub fn tick(self: *CPU) void{ 
-        var opcode = self.fetch();
+        var opcode = self.popPC();
         self.execute(opcode);
     }
 
-    pub fn fetch(self: *CPU) u16 {
-        // read from memory
-        // increment pc
-        // return opcode
+    // popPC reads a single byte from memory and increments PC
+    fn popPC(self: *CPU) u16 {
         var opcode: u16 = self.memory.read(self.pc);
         self.pc += 1;
         return opcode;
     }
 
+    fn popPC16(self: *CPU) u16 {
+        var b1: u16 =  self.popPC();
+        var b2: u16 = self.popPC();
+        return b2 << 8 | b1;
+    }
 
+
+    // The F register is a special register because it contains the values of 4
+    // flags which allow the CPU to track particular states:
+    //
+    pub fn setFlag(self: *CPU, index: u8, on: bool) void {
+        if (on) {
+            self.af.setLo(set(self.af.lo(), index));
+        } else {
+            self.af.setLo(reset(self.af.lo(), index));
+        }
+    }
+
+    // Zero Flag. Set when the result of a mathemetical instruction is zero
+    pub fn Z(self: *CPU) bool {
+        return self.af.hilo()>>7&1 == 1;
+    }
+
+    // setZ sets the zero flag
+    pub fn setZ(self: *CPU, on: bool) void {
+        self.setFlag(7, on);
+    }
+
+    // setN sets the negative flag
+    pub fn setN(self: *CPU, on:bool) void {
+        self.setFlag(6, on);
+    }
+
+    // setH sets the half carry flag
+    pub fn setH(self: *CPU, on: bool) void {
+        self.setFlag(5, on);
+    }
+
+
+    // setC sets the carry flag
+    pub fn setC(self: *CPU, on:bool) void {
+        self.setFlag(4, on);
+    }
+
+    // execute acepts an opcode and executes the relevant instruction
+    // https://izik1.github.io/gbops/index.html
+    // TODO: Better understand length and clock cycles
     pub fn execute(self: *CPU, opcode: u16) void {
-        print("0x{x}", .{opcode});
-        // execute opcode
+        print("0x{x}\n", .{opcode});
+
+        var cycles: u8 = undefined;
+        var length: u8 = undefined;
+
+        switch(opcode) {
+            // LD SP,u16
+            0x31 => {
+                self.sp = self.popPC16();
+            },
+            // XOR A,A
+            // Bitwise XOR between the value in register A
+            0xaf => {
+                var a1: u8 = self.af.hi();
+                var a2: u8 = self.af.hi();
+
+                var v: u8 = a1 ^ a2;
+                self.af.setHi(v);
+
+                // Set flags
+                self.setZ(v == 0);
+                self.setN(false);
+                self.setH(false);
+                self.setC(false);
+            },
+            else => {
+                print("not implemented", .{});
+            }
+        }
     }
 };
 
-test "CPU" {
-    var cpu = try CPU.init(std.heap.page_allocator);
-    cpu.tick();
-    cpu.deinit();
-}

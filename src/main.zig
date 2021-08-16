@@ -18,5 +18,8 @@ pub fn main() anyerror!void {
 
     try cpu.memory.loadRom(buffer);
 
-    cpu.tick();
+    // read until boot rom is done
+    while (cpu.pc < 0x100) {
+        cpu.tick();
+    }
 }
