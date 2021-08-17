@@ -1,4 +1,6 @@
 const std = @import("std");
+const print = std.debug.print;
+const testing = std.testing;
 
 const c = @import("./cpu.zig");
 
@@ -22,4 +24,14 @@ test "boot rom" {
 
     // done
     cpu.deinit();
+}
+
+test "registers" {
+    var r = c.register{.value = undefined};
+    r.setHi(0x12);
+    r.setLo(0x34);
+
+    try testing.expectEqual(@intCast(u8, 0x12), r.hi());
+    try testing.expectEqual(@intCast(u8, 0x34), r.lo());
+    try testing.expectEqual(@intCast(u16, 0x1234), r.hilo());
 }

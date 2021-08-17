@@ -13,7 +13,9 @@ fn reset(value: u8, bit: u8) u8 {
 }
 
 
-const register = struct {
+// register is a "virtual" 16-bit register which joins two 8-bit registers
+// together. If the register was AF, A would be the Hi byte and F the Lo.
+pub const register = struct {
     value: u16,
 
     pub fn setLo(self: *register, value: u8) void {
@@ -29,7 +31,7 @@ const register = struct {
     }
 
     pub fn lo(self: *register) u8 {
-        return self.value & 0xFF;
+        return @intCast(u8, self.value & 0xFF);
     }
 
     pub fn hi(self: *register) u8 {
@@ -72,6 +74,32 @@ pub const Memory = struct {
         }
     }
 };
+
+// TODO: Playing with lookup tables. Anonymous functions do not yet exist as
+// syntactic sugar and make this a bit of a pain to read/write. Potential
+// though, so leaving.
+pub const Step = fn(cpu: *CPU) void;
+
+pub const Opcode = struct {
+    value: u8, // e.g. 0x31
+    length: u8,
+    cycles: u8, // clock cycles
+
+    steps: []Step,
+};
+
+fn ldSPu16(cpu: *CPU) void {
+    cpu.sp = cpu.popPC16();
+}
+var op: Opcode = .{
+    .value = 0x31,
+    .length = 3,
+    .cycles = 12,
+    .steps = [_]Step{
+        ldSPu16,
+    }
+};
+
 
 // The GameBoy CPU is composed of 8 different registers which are responsible
 // for holding onto little pieces of data that the CPU can manipulate when it
@@ -128,16 +156,51 @@ pub const CPU = struct {
         return b2 << 8 | b1;
     }
 
+    // execute accepts an opcode and executes the relevant instruction
+    // https://izik1.github.io/gbops/index.html
+    // TODO: Better understand length and clock cycles
+    pub fn execute(self: *CPU, opcode: u16) void {
+        print("0x{x}\n", .{opcode});
+
+        var cycles: u8 = undefined;
+        var length: u8 = undefined;
+
+        switch(opcode) {
+            // LD SP,u16
+            0x31 => {
+                self.sp = self.popPC16();
+            },
+
+            // XOR A,A
+            // Bitwise XOR between the value in register A
+            0xaf => {
+                var a1: u8 = self.af.hi();
+                var a2: u8 = self.af.hi();
+
+                var v: u8 = a1 ^ a2;
+                self.af.setHi(v);
+
+                // Set flags
+                self.setZ(v == 0);
+                self.setN(false);
+                self.setH(false);
+                self.setC(false);
+            },
+            else => {
+                print("not implemented", .{});
+            }
+        }
+    }
 
     // The F register is a special register because it contains the values of 4
     // flags which allow the CPU to track particular states:
     //
     pub fn setFlag(self: *CPU, index: u8, on: bool) void {
-        if (on) {
-            self.af.setLo(set(self.af.lo(), index));
-        } else {
-            self.af.setLo(reset(self.af.lo(), index));
-        }
+        //if (on) {
+        //    self.af.setLo(set(self.af.lo(), index));
+        //} else {
+        //    self.af.setLo(reset(self.af.lo(), index));
+        //}
     }
 
     // Zero Flag. Set when the result of a mathemetical instruction is zero
@@ -166,39 +229,5 @@ pub const CPU = struct {
         self.setFlag(4, on);
     }
 
-    // execute acepts an opcode and executes the relevant instruction
-    // https://izik1.github.io/gbops/index.html
-    // TODO: Better understand length and clock cycles
-    pub fn execute(self: *CPU, opcode: u16) void {
-        print("0x{x}\n", .{opcode});
-
-        var cycles: u8 = undefined;
-        var length: u8 = undefined;
-
-        switch(opcode) {
-            // LD SP,u16
-            0x31 => {
-                self.sp = self.popPC16();
-            },
-            // XOR A,A
-            // Bitwise XOR between the value in register A
-            0xaf => {
-                var a1: u8 = self.af.hi();
-                var a2: u8 = self.af.hi();
-
-                var v: u8 = a1 ^ a2;
-                self.af.setHi(v);
-
-                // Set flags
-                self.setZ(v == 0);
-                self.setN(false);
-                self.setH(false);
-                self.setC(false);
-            },
-            else => {
-                print("not implemented", .{});
-            }
-        }
-    }
 };
 
