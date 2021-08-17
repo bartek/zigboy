@@ -13,7 +13,7 @@ test "boot rom" {
 
     try cpu.memory.loadRom(rom.boot_rom[0..]);
 
-    var expected = [3][]const u8{
+    var expected = [_][]const u8{
         "LD SP,u16",
         "XOR A,A",
         "LD HL,u16"

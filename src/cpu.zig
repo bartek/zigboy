@@ -35,7 +35,7 @@ pub const register = struct {
 
 
 pub const Memory = struct {
-    // GameBoy contains an 8-bit processor, meaning it can access 8-bits of data
+    // Game Boy contains an 8-bit processor, meaning it can access 8-bits of data
     // at one time. To access this data, it has a 16-bit address bus, which can
     // address 65,536 positions of memory.
     const memory_size = 65536;
@@ -112,11 +112,11 @@ fn xorAA(cpu: *CPU) void {
     cpu.setC(false);
 }
 
-// The GameBoy CPU is composed of 8 different registers which are responsible
+// The Game Boy CPU is composed of 8 different registers which are responsible
 // for holding onto little pieces of data that the CPU can manipulate when it
 // executes various instructions. These registers are named A, B, C, D, E, F, H,
 // and L. Since they are 8-bit registers, they can hold only 8-bit values.
-// However, the GameBoy can combine two registers in order to read and write
+// However, the Game Boy can combine two registers in order to read and write
 // 16-bit values. The valid combinations then are AF, BC, DE, and HL.
 pub const CPU = struct {
     af: register,
