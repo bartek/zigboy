@@ -2,24 +2,18 @@ const std = @import("std");
 const print = std.debug.print;
 const Allocator = std.mem.Allocator;
 
-// Set a bit and return the new value
-fn set(value: u8, bit: u8) u8 {
-    return value | (1 << bit);
-}
-
-// TODO
-fn reset(value: u8, bit: u8) u8 {
-    //return value & ^(1 << bit);
-}
-
 
 // register is a "virtual" 16-bit register which joins two 8-bit registers
 // together. If the register was AF, A would be the Hi byte and F the Lo.
 pub const register = struct {
     value: u16,
 
+    pub fn set(self: *register, value: u16) void {
+        self.value = value;
+    }
+
     pub fn setLo(self: *register, value: u8) void {
-        self.value = @intCast(u16, value) | @intCast(u16, self.value)&0xFF00;
+        self.value = @intCast(u16, value) | (@intCast(u16, self.value)&0xFF00);
     }
 
     pub fn setHi(self: *register, value: u8) void {
@@ -75,31 +69,48 @@ pub const Memory = struct {
     }
 };
 
-// TODO: Playing with lookup tables. Anonymous functions do not yet exist as
-// syntactic sugar and make this a bit of a pain to read/write. Potential
-// though, so leaving.
 pub const Step = fn(cpu: *CPU) void;
 
 pub const Opcode = struct {
-    value: u8, // e.g. 0x31
+    label: [] const u8, // e.g. "XOR A,A"
+    value: u16, // e.g. 0x31
     length: u8,
     cycles: u8, // clock cycles
 
-    steps: []Step,
+    // Zig note: The usage of .steps in initializing the Opcode looks like so:
+    // .steps = &[_]Step{
+    //     ldSpu16,
+    // }
+    // This is implicitly a constant, and thus, we have to give the compiler a
+    // hint that this is expected, hence the `const` in this definition.
+    // Alternatively, the steps could be explicitly defined as a non-constant
+    // (var steps = [_]Step{...}, but it feels syntactically more enjoyable to
+    // do it this way.
+    steps: []const Step,
 };
 
-fn ldSPu16(cpu: *CPU) void {
+
+fn ldSpu16(cpu: *CPU) void {
     cpu.sp = cpu.popPC16();
 }
-var op: Opcode = .{
-    .value = 0x31,
-    .length = 3,
-    .cycles = 12,
-    .steps = [_]Step{
-        ldSPu16,
-    }
-};
 
+fn ldHlu16(cpu: *CPU) void {
+    cpu.hl.set(cpu.popPC16());
+}
+
+fn xorAA(cpu: *CPU) void {
+    var a1: u8 = cpu.af.hi();
+    var a2: u8 = cpu.af.hi();
+
+    var v: u8 = a1 ^ a2;
+    cpu.af.setHi(v);
+
+    // Set flags
+    cpu.setZ(v == 0);
+    cpu.setN(false);
+    cpu.setH(false);
+    cpu.setC(false);
+}
 
 // The GameBoy CPU is composed of 8 different registers which are responsible
 // for holding onto little pieces of data that the CPU can manipulate when it
@@ -140,68 +151,96 @@ pub const CPU = struct {
     // tick ticks the CPU
     pub fn tick(self: *CPU) void{ 
         var opcode = self.popPC();
-        self.execute(opcode);
+        self.execute(self.operation(opcode));
     }
 
     // popPC reads a single byte from memory and increments PC
-    fn popPC(self: *CPU) u16 {
+    pub fn popPC(self: *CPU) u16 {
         var opcode: u16 = self.memory.read(self.pc);
         self.pc += 1;
         return opcode;
     }
 
-    fn popPC16(self: *CPU) u16 {
+    pub fn popPC16(self: *CPU) u16 {
         var b1: u16 =  self.popPC();
         var b2: u16 = self.popPC();
         return b2 << 8 | b1;
     }
 
-    // execute accepts an opcode and executes the relevant instruction
-    // https://izik1.github.io/gbops/index.html
-    // TODO: Better understand length and clock cycles
-    pub fn execute(self: *CPU, opcode: u16) void {
+    pub fn operation(self: *CPU, opcode: u16) Opcode {
         print("0x{x}\n", .{opcode});
 
-        var cycles: u8 = undefined;
-        var length: u8 = undefined;
+        var op: Opcode = .{
+            .label = undefined,
+            .value = opcode, // This is repeated. Not sure why Zig doesn't allow it to be omitted in the subsequent usage.
+            .length = undefined,
+            .cycles = undefined,
+            .steps = undefined,
+        };
 
         switch(opcode) {
-            // LD SP,u16
             0x31 => {
-                self.sp = self.popPC16();
+                op = .{
+                    .label = "LD SP,u16",
+                    .value = opcode,
+                    .length = 3,
+                    .cycles = 12,
+                    .steps = &[_]Step{
+                        ldSpu16,
+                    },
+                };
             },
-
+            0x21 => {
+                op =  .{
+                    .label = "LD HL,u16",
+                    .value = opcode,
+                    .length = 3,
+                    .cycles = 12,
+                    .steps = &[_]Step{
+                        ldHlu16,
+                    },
+                }; 
+                
+            },
             // XOR A,A
             // Bitwise XOR between the value in register A
             0xaf => {
-                var a1: u8 = self.af.hi();
-                var a2: u8 = self.af.hi();
-
-                var v: u8 = a1 ^ a2;
-                self.af.setHi(v);
-
-                // Set flags
-                self.setZ(v == 0);
-                self.setN(false);
-                self.setH(false);
-                self.setC(false);
+                op = .{
+                    .label = "XOR A,A",
+                    .value = opcode,
+                    .length = 1,
+                    .cycles = 4,
+                    .steps = &[_]Step{
+                        xorAA,
+                    },
+                };
             },
             else => {
                 print("not implemented", .{});
             }
         }
+
+        return op;
+    }
+
+    // execute accepts an Opcode struct and executes the packed instruction
+    // https://izik1.github.io/gbops/index.html
+    pub fn execute(self: *CPU,  opcode: Opcode) void {
+        for (opcode.steps) |step| {
+            step(self);
+        }
     }
 
     // The F register is a special register because it contains the values of 4
     // flags which allow the CPU to track particular states:
-    //
-    pub fn setFlag(self: *CPU, index: u8, on: bool) void {
-        //if (on) {
-        //    self.af.setLo(set(self.af.lo(), index));
-        //} else {
-        //    self.af.setLo(reset(self.af.lo(), index));
-        //}
+    pub fn setFlag(self: *CPU, comptime index: u8, on: bool) void {
+        if (on) {
+            self.af.setLo(self.af.lo() | (1 << index));
+        } else {
+            self.af.setLo(self.af.lo() ^ (1 << index));
+        }
     }
+
 
     // Zero Flag. Set when the result of a mathemetical instruction is zero
     pub fn Z(self: *CPU) bool {
