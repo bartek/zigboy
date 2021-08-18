@@ -4,6 +4,7 @@ const assert = std.debug.assert;
 const mem = std.mem;
 
 const c = @import("./cpu.zig");
+const instructions = @import("./instructions.zig");
 
 const rom = @import("./bootrom.zig");
 
@@ -23,7 +24,7 @@ test "boot rom" {
     var i : usize = 0;
     while (cpu.pc < 0x100) : (i += 1) {
         var opcode = cpu.popPC();
-        var op = cpu.operation(opcode);
+        var op = instructions.operation(&cpu, opcode);
         print("\n\nasserting {s}\n\n", .{expected[i]});
 
         assert(mem.eql(u8, expected[i], op.label));
