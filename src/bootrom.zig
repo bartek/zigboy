@@ -1,4 +1,4 @@
-pub var boot_rom = [256]u8 {
+pub var rom = [256]u8 {
 // init_stack:
 0x31, 0xFE, 0xFF, // LD     SP 0xfffe
 0xAF,             // XOR    A A

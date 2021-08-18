@@ -13,3 +13,7 @@ space!
 ## TODO
 
 Everything
+
+## References
+
+* [Game Boy Architecture](https://www.copetti.org/writings/consoles/game-boy/#memory-available)

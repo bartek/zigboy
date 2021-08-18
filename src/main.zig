@@ -9,17 +9,18 @@ pub fn main() anyerror!void {
     const allocator = std.heap.page_allocator;
 
     var cpu = try c.CPU.init(allocator);
-     
-    // Read the boot ROM into memory
-    const buffer = cwd.readFileAlloc(allocator, "./roms/DMG_ROM.bin", 256) catch |err| {
+
+    // Load Tetris into memory
+    const buffer = cwd.readFileAlloc(allocator, "./roms/tetris.gb", 32768) catch |err| {
         warn("unable to open file: {s}\n", .{@errorName(err)});
         return err;
     };
 
     try cpu.memory.loadRom(buffer);
-
-    // read until boot rom is done
-    while (cpu.pc < 0x100) {
+     
+    // read first 100 instructions
+    var i: usize = 0;
+    while (i < 100) : (i += 1) {
         cpu.tick();
     }
 }

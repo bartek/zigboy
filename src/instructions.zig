@@ -37,6 +37,15 @@ pub fn operation(cpu: *c.CPU, opcode: u16) Opcode {
     };
 
     switch(opcode) {
+        0x0 => {
+            op = .{
+                .label = "NOP",
+                .value = opcode,
+                .length = 1,
+                .cycles = 4,
+                .steps = &[_]Step{},
+            };
+        },
         0x31 => {
             op = .{
                 .label = "LD SP,u16",
@@ -45,6 +54,17 @@ pub fn operation(cpu: *c.CPU, opcode: u16) Opcode {
                 .cycles = 12,
                 .steps = &[_]Step{
                     ldSpu16,
+                },
+            };
+        },
+        0x20 => {
+            op = .{
+                .label = "JR NZ,u8",
+                .value = opcode,
+                .length = 2,
+                .cycles = 12, // FIXME: with/without branch timing to review
+                .steps = &[_]Step{
+                    jrNz8,
                 },
             };
         },
@@ -60,6 +80,17 @@ pub fn operation(cpu: *c.CPU, opcode: u16) Opcode {
             }; 
             
         },
+        0x32 => {
+            op = .{
+                .label = "LD (HL-),A",
+                .value = opcode,
+                .length = 1,
+                .cycles = 8,
+                .steps = &[_]Step{
+                    ldHlA,
+                },
+            };
+        },
         // XOR A,A
         // Bitwise XOR between the value in register A
         0xaf => {
@@ -73,8 +104,48 @@ pub fn operation(cpu: *c.CPU, opcode: u16) Opcode {
                 },
             };
         },
+
+        // -- Extended Callbacks
+        // called via the opcode 0xcb which is an extended opcode meaning
+        // the next immediate byte has to be decoded and treated as the opcode
+        0xcb => {
+            var next: u16 = cpu.popPC();
+            op = extendedOperation(cpu, next);
+        },
         else => {
-            print("not implemented", .{});
+            print("not implemented\n", .{});
+        }
+    }
+
+    return op;
+}
+
+fn extendedOperation(cpu: *c.CPU, opcode: u16) Opcode {
+    print("[extended]: 0x{x}\n", .{opcode});
+
+    var op: Opcode = .{
+        .label = undefined,
+        .value = opcode, // This is repeated. Not sure why Zig doesn't allow it to be omitted in the subsequent usage.
+        .length = undefined,
+        .cycles = undefined,
+        .steps = undefined,
+    };
+
+    switch(opcode) {
+        0x7c => {
+            op = .{
+                .label = "BIT 7,H",
+                .value = opcode,
+                .length = 2,
+                .cycles = 8,
+                .steps = &[_]Step{
+                    bit7h,
+                },
+            };
+
+        },
+        else => {
+            print("[extended] not implemented\n", .{});
         }
     }
 
@@ -92,6 +163,16 @@ fn ldHlu16(cpu: *c.CPU) void {
     cpu.hl.set(cpu.popPC16());
 }
 
+// LD (HL-),A
+// Load to the address specified by the 16-bit register HL, data from A
+// The value of HL is decremented after memory write
+fn ldHlA(cpu: *c.CPU) void {
+    var address: u16 = cpu.hl.hilo();
+    cpu.memory.write(address, cpu.af.hi());
+    cpu.hl.set(cpu.hl.hilo() - 1);
+
+}
+
 // XOR A,A
 fn xorAA(cpu: *c.CPU) void {
     var a1: u8 = cpu.af.hi();
@@ -107,3 +188,30 @@ fn xorAA(cpu: *c.CPU) void {
     cpu.setC(false);
 }
 
+// Jumps
+
+// JR NZ,u8
+// Unconditional jump to the relative address specified by popping PC, only
+// occurring if Z is false
+fn jrNz8(cpu: *c.CPU) void {
+    var address: u16 = cpu.popPC();
+    if (!cpu.Z()) {
+        var next: u16 = cpu.pc + address;
+        print("Jumping to {x}\n", .{next});
+        cpu.pc = next;
+    }
+}
+
+
+// Extended Operations
+
+// BIT 7,H
+// Test bit at index 7 using value H
+fn bit7h(cpu: *c.CPU) void {
+    var v: u8 = cpu.hl.hi();
+    var index: u3 = 7;
+
+    cpu.setZ((v>>index)&1 == 0);
+    cpu.setN(false);
+    cpu.setH(true);
+}
