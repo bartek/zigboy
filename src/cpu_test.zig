@@ -19,7 +19,7 @@ test "boot rom" {
     };
 
     // tick until pc is 0x100. bootrom is done then
-    var i : usize = 0;
+    var i: usize = 0;
     while (cpu.pc < 0x100) : (i += 1) {
         var opcode = cpu.popPC();
         var op = instructions.operation(&cpu, opcode);
@@ -33,7 +33,7 @@ test "boot rom" {
 }
 
 test "registers" {
-    var r = c.register{.value = undefined};
+    var r = c.register{ .value = undefined };
     r.setHi(0x12);
     r.setLo(0x34);
 

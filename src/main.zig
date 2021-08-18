@@ -17,7 +17,7 @@ pub fn main() anyerror!void {
     };
 
     try cpu.memory.loadRom(buffer);
-     
+
     // read first 100 instructions
     var i: usize = 0;
     while (i < 100) : (i += 1) {

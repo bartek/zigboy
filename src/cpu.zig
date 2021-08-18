@@ -5,7 +5,6 @@ const Allocator = std.mem.Allocator;
 const instructions = @import("./instructions.zig");
 const memory = @import("./memory.zig");
 
-
 // register is a "virtual" 16-bit register which joins two 8-bit registers
 // together. If the register was AF, A would be the Hi byte and F the Lo.
 pub const register = struct {
@@ -16,11 +15,11 @@ pub const register = struct {
     }
 
     pub fn setLo(self: *register, value: u8) void {
-        self.value = @intCast(u16, value) | (@intCast(u16, self.value)&0xFF00);
+        self.value = @intCast(u16, value) | (@intCast(u16, self.value) & 0xFF00);
     }
 
     pub fn setHi(self: *register, value: u8) void {
-        self.value = @intCast(u16, value)<<8 | (@intCast(u16, self.value) & 0xFF);
+        self.value = @intCast(u16, value) << 8 | (@intCast(u16, self.value) & 0xFF);
     }
 
     pub fn hilo(self: *register) u16 {
@@ -73,7 +72,7 @@ pub const CPU = struct {
     }
 
     // tick ticks the CPU
-    pub fn tick(self: *CPU) void{ 
+    pub fn tick(self: *CPU) void {
         var opcode = self.popPC();
         self.execute(instructions.operation(self, opcode));
     }
@@ -86,14 +85,14 @@ pub const CPU = struct {
     }
 
     pub fn popPC16(self: *CPU) u16 {
-        var b1: u16 =  self.popPC();
+        var b1: u16 = self.popPC();
         var b2: u16 = self.popPC();
         return b2 << 8 | b1;
     }
 
     // execute accepts an Opcode struct and executes the packed instruction
     // https://izik1.github.io/gbops/index.html
-    pub fn execute(self: *CPU,  opcode: instructions.Opcode) void {
+    pub fn execute(self: *CPU, opcode: instructions.Opcode) void {
         for (opcode.steps) |step| {
             step(self);
         }
@@ -109,10 +108,9 @@ pub const CPU = struct {
         }
     }
 
-
     // Zero Flag. Set when the result of a mathemetical instruction is zero
     pub fn Z(self: *CPU) bool {
-        return self.af.hilo()>>7&1 == 1;
+        return self.af.hilo() >> 7 & 1 == 1;
     }
 
     // setZ sets the zero flag
@@ -121,7 +119,7 @@ pub const CPU = struct {
     }
 
     // setN sets the negative flag
-    pub fn setN(self: *CPU, on:bool) void {
+    pub fn setN(self: *CPU, on: bool) void {
         self.setFlag(6, on);
     }
 
@@ -130,11 +128,8 @@ pub const CPU = struct {
         self.setFlag(5, on);
     }
 
-
     // setC sets the carry flag
-    pub fn setC(self: *CPU, on:bool) void {
+    pub fn setC(self: *CPU, on: bool) void {
         self.setFlag(4, on);
     }
-
 };
-

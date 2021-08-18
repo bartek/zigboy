@@ -4,11 +4,11 @@ const print = std.debug.print;
 const c = @import("./cpu.zig");
 
 // Step is single step within an Opcode
-pub const Step = fn(cpu: *c.CPU) void;
+pub const Step = fn (cpu: *c.CPU) void;
 
 // Opcode is an instruction for the CPU
 pub const Opcode = struct {
-    label: [] const u8, // e.g. "XOR A,A"
+    label: []const u8, // e.g. "XOR A,A"
     value: u16, // e.g. 0x31
     length: u8,
     cycles: u8, // clock cycles
@@ -36,7 +36,7 @@ pub fn operation(cpu: *c.CPU, opcode: u16) Opcode {
         .steps = undefined,
     };
 
-    switch(opcode) {
+    switch (opcode) {
         0x0 => {
             op = .{
                 .label = "NOP",
@@ -69,7 +69,7 @@ pub fn operation(cpu: *c.CPU, opcode: u16) Opcode {
             };
         },
         0x21 => {
-            op =  .{
+            op = .{
                 .label = "LD HL,u16",
                 .value = opcode,
                 .length = 3,
@@ -77,8 +77,7 @@ pub fn operation(cpu: *c.CPU, opcode: u16) Opcode {
                 .steps = &[_]Step{
                     ldHlu16,
                 },
-            }; 
-            
+            };
         },
         0x32 => {
             op = .{
@@ -114,7 +113,7 @@ pub fn operation(cpu: *c.CPU, opcode: u16) Opcode {
         },
         else => {
             print("not implemented\n", .{});
-        }
+        },
     }
 
     return op;
@@ -131,7 +130,7 @@ fn extendedOperation(cpu: *c.CPU, opcode: u16) Opcode {
         .steps = undefined,
     };
 
-    switch(opcode) {
+    switch (opcode) {
         0x7c => {
             op = .{
                 .label = "BIT 7,H",
@@ -142,16 +141,14 @@ fn extendedOperation(cpu: *c.CPU, opcode: u16) Opcode {
                     bit7h,
                 },
             };
-
         },
         else => {
             print("[extended] not implemented\n", .{});
-        }
+        },
     }
 
     return op;
 }
-
 
 // LD SP,16
 fn ldSpu16(cpu: *c.CPU) void {
@@ -170,7 +167,6 @@ fn ldHlA(cpu: *c.CPU) void {
     var address: u16 = cpu.hl.hilo();
     cpu.memory.write(address, cpu.af.hi());
     cpu.hl.set(cpu.hl.hilo() - 1);
-
 }
 
 // XOR A,A
@@ -202,7 +198,6 @@ fn jrNz8(cpu: *c.CPU) void {
     }
 }
 
-
 // Extended Operations
 
 // BIT 7,H
@@ -211,7 +206,7 @@ fn bit7h(cpu: *c.CPU) void {
     var v: u8 = cpu.hl.hi();
     var index: u3 = 7;
 
-    cpu.setZ((v>>index)&1 == 0);
+    cpu.setZ((v >> index) & 1 == 0);
     cpu.setN(false);
     cpu.setH(true);
 }
