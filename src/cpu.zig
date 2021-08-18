@@ -2,6 +2,8 @@ const std = @import("std");
 const print = std.debug.print;
 const Allocator = std.mem.Allocator;
 
+const instructions = @import("./instructions.zig");
+
 
 // register is a "virtual" 16-bit register which joins two 8-bit registers
 // together. If the register was AF, A would be the Hi byte and F the Lo.
@@ -69,48 +71,6 @@ pub const Memory = struct {
     }
 };
 
-pub const Step = fn(cpu: *CPU) void;
-
-pub const Opcode = struct {
-    label: [] const u8, // e.g. "XOR A,A"
-    value: u16, // e.g. 0x31
-    length: u8,
-    cycles: u8, // clock cycles
-
-    // Zig note: The usage of .steps in initializing the Opcode looks like so:
-    // .steps = &[_]Step{
-    //     ldSpu16,
-    // }
-    // This is implicitly a constant, and thus, we have to give the compiler a
-    // hint that this is expected, hence the `const` in this definition.
-    // Alternatively, the steps could be explicitly defined as a non-constant
-    // (var steps = [_]Step{...}, but it feels syntactically more enjoyable to
-    // do it this way.
-    steps: []const Step,
-};
-
-
-fn ldSpu16(cpu: *CPU) void {
-    cpu.sp = cpu.popPC16();
-}
-
-fn ldHlu16(cpu: *CPU) void {
-    cpu.hl.set(cpu.popPC16());
-}
-
-fn xorAA(cpu: *CPU) void {
-    var a1: u8 = cpu.af.hi();
-    var a2: u8 = cpu.af.hi();
-
-    var v: u8 = a1 ^ a2;
-    cpu.af.setHi(v);
-
-    // Set flags
-    cpu.setZ(v == 0);
-    cpu.setN(false);
-    cpu.setH(false);
-    cpu.setC(false);
-}
 
 // The Game Boy CPU is composed of 8 different registers which are responsible
 // for holding onto little pieces of data that the CPU can manipulate when it
@@ -151,7 +111,7 @@ pub const CPU = struct {
     // tick ticks the CPU
     pub fn tick(self: *CPU) void{ 
         var opcode = self.popPC();
-        self.execute(self.operation(opcode));
+        self.execute(instructions.operation(self, opcode));
     }
 
     // popPC reads a single byte from memory and increments PC
@@ -167,65 +127,9 @@ pub const CPU = struct {
         return b2 << 8 | b1;
     }
 
-    pub fn operation(self: *CPU, opcode: u16) Opcode {
-        print("0x{x}\n", .{opcode});
-
-        var op: Opcode = .{
-            .label = undefined,
-            .value = opcode, // This is repeated. Not sure why Zig doesn't allow it to be omitted in the subsequent usage.
-            .length = undefined,
-            .cycles = undefined,
-            .steps = undefined,
-        };
-
-        switch(opcode) {
-            0x31 => {
-                op = .{
-                    .label = "LD SP,u16",
-                    .value = opcode,
-                    .length = 3,
-                    .cycles = 12,
-                    .steps = &[_]Step{
-                        ldSpu16,
-                    },
-                };
-            },
-            0x21 => {
-                op =  .{
-                    .label = "LD HL,u16",
-                    .value = opcode,
-                    .length = 3,
-                    .cycles = 12,
-                    .steps = &[_]Step{
-                        ldHlu16,
-                    },
-                }; 
-                
-            },
-            // XOR A,A
-            // Bitwise XOR between the value in register A
-            0xaf => {
-                op = .{
-                    .label = "XOR A,A",
-                    .value = opcode,
-                    .length = 1,
-                    .cycles = 4,
-                    .steps = &[_]Step{
-                        xorAA,
-                    },
-                };
-            },
-            else => {
-                print("not implemented", .{});
-            }
-        }
-
-        return op;
-    }
-
     // execute accepts an Opcode struct and executes the packed instruction
     // https://izik1.github.io/gbops/index.html
-    pub fn execute(self: *CPU,  opcode: Opcode) void {
+    pub fn execute(self: *CPU,  opcode: instructions.Opcode) void {
         for (opcode.steps) |step| {
             step(self);
         }
