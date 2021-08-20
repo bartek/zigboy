@@ -75,15 +75,22 @@ pub const CPU = struct {
     // Matches format at https://github.com/wheremyfoodat/Gameboy-logs
     // to allow for programmatic comparison.
     pub fn debug(self: *CPU, opcode: u16) void {
-
         var mem: u8 = self.memory.read(self.pc);
         var mem1: u8 = self.memory.read(self.pc + 1);
         var mem2: u8 = self.memory.read(self.pc + 2);
         var mem3: u8 = self.memory.read(self.pc + 3);
 
-        print(
-            "A: {X:0>2} F: {X:0>2} B: {X:0>2} C: {X:0>2} D: {X:0>2} E: {X:0>2} H: {X:0>2} L: {X:0>2} SP: {X:0>4} PC: {d:0>4} ({X:0>2} {X:0>2} {X:0>2} {X:0>2})\n", .{self.af.hi(), self.af.lo(), self.bc.hi(), self.bc.lo(), self.de.hi(), self.de.lo(), self.hl.hi(), self.hl.lo(), self.sp, self.pc, mem, mem1, mem2, mem3}
-        );
+        print("A: {X:0>2} " ++
+            "F: {X:0>2} " ++
+            "B: {X:0>2} " ++
+            "C: {X:0>2} " ++
+            "D: {X:0>2} " ++
+            "E: {X:0>2} " ++
+            "H: {X:0>2} " ++
+            "L: {X:0>2} " ++
+            "SP: {X:0>4} " ++
+            "PC: {d:0>4} " ++
+            "({X:0>2} {X:0>2} {X:0>2} {X:0>2})\n", .{ self.af.hi(), self.af.lo(), self.bc.hi(), self.bc.lo(), self.de.hi(), self.de.lo(), self.hl.hi(), self.hl.lo(), self.sp, self.pc, mem, mem1, mem2, mem3 });
     }
 
     // tick ticks the CPU
@@ -163,4 +170,3 @@ pub const CPU = struct {
         self.setFlag(4, on);
     }
 };
-
