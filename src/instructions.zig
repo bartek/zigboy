@@ -26,7 +26,7 @@ pub const Opcode = struct {
 };
 
 pub fn operation(cpu: *c.CPU, opcode: u16) Opcode {
-    print("0x{x}\n", .{opcode});
+    print("0x{x} @ {d}\n", .{opcode, cpu.pc});
 
     var op: Opcode = .{
         .label = undefined,
@@ -68,6 +68,17 @@ pub fn operation(cpu: *c.CPU, opcode: u16) Opcode {
                 },
             };
         },
+        0xc3 => {
+            op = .{
+                .label = "JP u16",
+                .value = opcode,
+                .length = 3,
+                .cycles = 16,
+                .steps = &[_]Step{
+                    jpu16,
+                },
+            };
+        },
         0x21 => {
             op = .{
                 .label = "LD HL,u16",
@@ -76,6 +87,17 @@ pub fn operation(cpu: *c.CPU, opcode: u16) Opcode {
                 .cycles = 12,
                 .steps = &[_]Step{
                     ldHlu16,
+                },
+            };
+        },
+        0x03 => {
+            op = .{
+                .label = "INC BC",
+                .value = opcode,
+                .length = 1,
+                .cycles = 8,
+                .steps = &[_]Step{
+                    incBc,
                 },
             };
         },
@@ -100,6 +122,52 @@ pub fn operation(cpu: *c.CPU, opcode: u16) Opcode {
                 .cycles = 4,
                 .steps = &[_]Step{
                     xorAA,
+                },
+            };
+        },
+
+        0x73 => {
+            op = .{
+                .label = "LD (HL),E",
+                .value = opcode,
+                .length = 1,
+                .cycles = 8,
+                .steps = &[_]Step{
+                    ldHlE,
+                },
+            };
+        },
+
+        0x83 => {
+            op = .{
+                .label = "ADD A,E",
+                .value = opcode,
+                .length = 1,
+                .cycles = 4,
+                .steps = &[_]Step{
+                    addAE,
+                },
+            };
+        },
+        0xc => {
+            op = .{
+                .label = "RET NZ",
+                .value = opcode,
+                .length = 1,
+                .cycles = 8,
+                .steps = &[_]Step{
+                    retNz,
+                },
+            };
+        },
+        0xd => {
+            op = .{
+                .label = "RET NC",
+                .value = opcode,
+                .length = 1,
+                .cycles = 8,
+                .steps = &[_]Step{
+                    retNc,
                 },
             };
         },
@@ -150,6 +218,32 @@ fn extendedOperation(cpu: *c.CPU, opcode: u16) Opcode {
     return op;
 }
 
+
+// ADDS
+// add_and_set_flags performs an add instruction on the input values, storing them using the set
+// function. Also updates flags accordingly
+fn add_and_set_flags(cpu: *c.CPU, v1: u8, v2: u8) u8 {
+    var total: u8 = v1 +% v2;
+
+    cpu.setZ(total == 0);
+    cpu.setH( (v1 & 0x0F) + (v2 & 0x0F) > 0x0F);
+    cpu.setC(total > 0xFF); // If result is greater than 255
+
+    return total;
+}
+
+// ADD A,E
+fn addAE(cpu: *c.CPU) void {
+    var v1: u8 = cpu.de.hi();
+    var v2: u8 = cpu.af.hi();
+
+    var total: u8 = add_and_set_flags(cpu, v1, v2);
+
+    cpu.af.setHi(total);
+}
+
+// LOADS
+
 // LD SP,16
 fn ldSpu16(cpu: *c.CPU) void {
     cpu.sp = cpu.popPC16();
@@ -158,6 +252,12 @@ fn ldSpu16(cpu: *c.CPU) void {
 // LD HL,u16
 fn ldHlu16(cpu: *c.CPU) void {
     cpu.hl.set(cpu.popPC16());
+}
+
+// LD (HL),E
+// Load E into memory address HL
+fn ldHlE(cpu: *c.CPU) void {
+    cpu.memory.write(cpu.hl.hilo(), cpu.de.hi());
 }
 
 // LD (HL-),A
@@ -198,6 +298,35 @@ fn jrNz8(cpu: *c.CPU) void {
     }
 }
 
+// JP u16
+// Jump to the address specified by extracting 16 bytes
+fn jpu16(cpu: *c.CPU) void {
+    var address: u16 = cpu.popPC16();
+    cpu.pc = address;
+}
+
+// RET NZ
+// If Z is negative, pop address from stack and jump to it.
+fn retNz(cpu: *c.CPU) void {
+    if (!cpu.Z()) {
+        cpu.pc = cpu.popStack();
+    }
+}
+
+fn retNc(cpu: *c.CPU) void {
+    if (!cpu.C()) {
+        cpu.pc = cpu.popStack();
+    }
+}
+
+// Increments
+//
+// INC BC
+fn incBc(cpu: *c.CPU) void {
+    var v: u16 = cpu.bc.hilo();
+    cpu.bc.set(v + 1);
+}
+
 // Extended Operations
 
 // BIT 7,H
@@ -210,3 +339,4 @@ fn bit7h(cpu: *c.CPU) void {
     cpu.setN(false);
     cpu.setH(true);
 }
+

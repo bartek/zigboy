@@ -5,6 +5,8 @@ const Allocator = std.mem.Allocator;
 const instructions = @import("./instructions.zig");
 const memory = @import("./memory.zig");
 
+const setFunc = fn(register: *register, value: u8) void;
+
 // register is a "virtual" 16-bit register which joins two 8-bit registers
 // together. If the register was AF, A would be the Hi byte and F the Lo.
 pub const register = struct {
@@ -90,6 +92,15 @@ pub const CPU = struct {
         return b2 << 8 | b1;
     }
 
+    // popStack pops the next 16 bit value off the stack and increments SP
+    pub fn popStack(self: *CPU) u16 {
+        var lo: u16 = self.memory.read(self.sp);
+        var hi: u16 = self.memory.read(self.sp + 1);
+        self.sp += 2;
+
+        return (hi << 8) | lo;
+    }
+
     // execute accepts an Opcode struct and executes the packed instruction
     // https://izik1.github.io/gbops/index.html
     pub fn execute(self: *CPU, opcode: instructions.Opcode) void {
@@ -113,6 +124,11 @@ pub const CPU = struct {
         return self.af.hilo() >> 7 & 1 == 1;
     }
 
+    // Carry Flag. Used by conditional jumps and instructions such as ADC, SBC, RL, RLA, etc.
+    pub fn C(self: *CPU) bool {
+        return self.af.hilo() >> 4 & 1 == 1;
+    }
+
     // setZ sets the zero flag
     pub fn setZ(self: *CPU, on: bool) void {
         self.setFlag(7, on);
@@ -133,3 +149,4 @@ pub const CPU = struct {
         self.setFlag(4, on);
     }
 };
+
