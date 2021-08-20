@@ -10,6 +10,12 @@ const memory = @import("./memory.zig");
 pub const register = struct {
     value: u16,
 
+    pub fn init(value: u8) register {
+        return register{
+            .value = value,
+        };
+    }
+
     pub fn set(self: *register, value: u16) void {
         self.value = value;
     }
@@ -58,12 +64,12 @@ pub const CPU = struct {
     pub fn init(allocator: *Allocator) !CPU {
         return CPU{
             .memory = try memory.Memory.init(allocator),
-            .af = undefined,
-            .bc = undefined,
-            .de = undefined,
-            .hl = undefined,
+            .af = register.init(0x00),
+            .bc = register.init(0x00),
+            .de = register.init(0x00),
+            .hl = register.init(0x00),
             .pc = 0x00,
-            .sp = undefined,
+            .sp = 0x00,
         };
     }
 
@@ -74,7 +80,7 @@ pub const CPU = struct {
     // debug prints debug information
     // Matches format at https://github.com/wheremyfoodat/Gameboy-logs
     // to allow for programmatic comparison.
-    pub fn debug(self: *CPU, opcode: u16) void {
+    pub fn debug(self: *CPU) void {
         var mem: u8 = self.memory.read(self.pc);
         var mem1: u8 = self.memory.read(self.pc + 1);
         var mem2: u8 = self.memory.read(self.pc + 2);
@@ -95,6 +101,7 @@ pub const CPU = struct {
 
     // tick ticks the CPU
     pub fn tick(self: *CPU) void {
+        self.debug();
         var opcode = self.popPC();
         self.execute(instructions.operation(self, opcode));
     }

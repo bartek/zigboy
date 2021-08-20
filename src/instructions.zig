@@ -26,8 +26,6 @@ pub const Opcode = struct {
 };
 
 pub fn operation(cpu: *c.CPU, opcode: u16) Opcode {
-    cpu.debug(opcode);
-
     var op: Opcode = .{
         .label = undefined,
         .value = opcode, // This is repeated. Not sure why Zig doesn't allow it to be omitted in the subsequent usage.
@@ -219,8 +217,6 @@ pub fn operation(cpu: *c.CPU, opcode: u16) Opcode {
 }
 
 fn extendedOperation(cpu: *c.CPU, opcode: u16) Opcode {
-    cpu.debug(opcode);
-
     var op: Opcode = .{
         .label = undefined,
         .value = opcode, // This is repeated. Not sure why Zig doesn't allow it to be omitted in the subsequent usage.
