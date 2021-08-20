@@ -386,7 +386,7 @@ fn bit7h(cpu: *c.CPU) void {
     var v: u8 = cpu.hl.hi();
     var index: u3 = 7;
 
-    cpu.setZ((v >> index) & 1 == 0);
+    cpu.setZ((v & (@as(usize, 1) << index)) == 0);
     cpu.setN(false);
     cpu.setH(true);
 }
