@@ -4,6 +4,7 @@ const Allocator = std.mem.Allocator;
 
 const instructions = @import("./instructions.zig");
 const memory = @import("./memory.zig");
+const flipBit = @import("./functions.zig").flipBit;
 
 // register is a "virtual" 16-bit register which joins two 8-bit registers
 // together. If the register was AF, A would be the Hi byte and F the Lo.
@@ -95,7 +96,7 @@ pub const CPU = struct {
             "H: {X:0>2} " ++
             "L: {X:0>2} " ++
             "SP: {X:0>4} " ++
-            "PC: {d:0>4} " ++
+            "PC: 00:{d:0>4} " ++
             "({X:0>2} {X:0>2} {X:0>2} {X:0>2})\n", .{ self.af.hi(), self.af.lo(), self.bc.hi(), self.bc.lo(), self.de.hi(), self.de.lo(), self.hl.hi(), self.hl.lo(), self.sp, self.pc, mem, mem1, mem2, mem3 });
     }
 
@@ -143,7 +144,7 @@ pub const CPU = struct {
         if (on) {
             self.af.setLo(self.af.lo() | (1 << index));
         } else {
-            self.af.setLo(self.af.lo() ^ (1 << index));
+            self.af.setLo(self.af.lo() & flipBit(1 << index));
         }
     }
 

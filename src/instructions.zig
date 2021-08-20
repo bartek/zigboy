@@ -319,6 +319,7 @@ fn ldHlA(cpu: *c.CPU) void {
 }
 
 // XOR A,A
+// XOR A with itself (or, set it to 0)
 fn xorAA(cpu: *c.CPU) void {
     var a1: u8 = cpu.af.hi();
     var a2: u8 = cpu.af.hi();
