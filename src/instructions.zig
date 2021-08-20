@@ -26,7 +26,7 @@ pub const Opcode = struct {
 };
 
 pub fn operation(cpu: *c.CPU, opcode: u16) Opcode {
-    print("0x{x} @ {d}\n", .{opcode, cpu.pc});
+    cpu.debug(opcode);
 
     var op: Opcode = .{
         .label = undefined,
@@ -46,14 +46,14 @@ pub fn operation(cpu: *c.CPU, opcode: u16) Opcode {
                 .steps = &[_]Step{},
             };
         },
-        0x31 => {
+        0x11 => {
             op = .{
-                .label = "LD SP,u16",
+                .label = "LD DE,u16",
                 .value = opcode,
                 .length = 3,
                 .cycles = 12,
                 .steps = &[_]Step{
-                    ldSpu16,
+                    ldDeu16,
                 },
             };
         },
@@ -65,6 +65,17 @@ pub fn operation(cpu: *c.CPU, opcode: u16) Opcode {
                 .cycles = 12, // FIXME: with/without branch timing to review
                 .steps = &[_]Step{
                     jrNz8,
+                },
+            };
+        },
+        0x31 => {
+            op = .{
+                .label = "LD SP,u16",
+                .value = opcode,
+                .length = 3,
+                .cycles = 12,
+                .steps = &[_]Step{
+                    ldSpu16,
                 },
             };
         },
@@ -112,8 +123,6 @@ pub fn operation(cpu: *c.CPU, opcode: u16) Opcode {
                 },
             };
         },
-        // XOR A,A
-        // Bitwise XOR between the value in register A
         0xaf => {
             op = .{
                 .label = "XOR A,A",
@@ -137,6 +146,17 @@ pub fn operation(cpu: *c.CPU, opcode: u16) Opcode {
                 },
             };
         },
+        0x8 => {
+            op = .{
+                .label = "ADD A,B",
+                .value = opcode,
+                .length = 1,
+                .cycles = 4,
+                .steps = &[_]Step{
+                    addAB,
+                },
+            };
+        },
 
         0x83 => {
             op = .{
@@ -146,6 +166,17 @@ pub fn operation(cpu: *c.CPU, opcode: u16) Opcode {
                 .cycles = 4,
                 .steps = &[_]Step{
                     addAE,
+                },
+            };
+        },
+        0x89 => {
+            op = .{
+                .label = "ADD A,C",
+                .value = opcode,
+                .length = 1,
+                .cycles = 4,
+                .steps = &[_]Step{
+                    addAC,
                 },
             };
         },
@@ -188,7 +219,7 @@ pub fn operation(cpu: *c.CPU, opcode: u16) Opcode {
 }
 
 fn extendedOperation(cpu: *c.CPU, opcode: u16) Opcode {
-    print("[extended]: 0x{x}\n", .{opcode});
+    cpu.debug(opcode);
 
     var op: Opcode = .{
         .label = undefined,
@@ -232,7 +263,6 @@ fn add_and_set_flags(cpu: *c.CPU, v1: u8, v2: u8) u8 {
     return total;
 }
 
-// ADD A,E
 fn addAE(cpu: *c.CPU) void {
     var v1: u8 = cpu.de.hi();
     var v2: u8 = cpu.af.hi();
@@ -240,6 +270,25 @@ fn addAE(cpu: *c.CPU) void {
     var total: u8 = add_and_set_flags(cpu, v1, v2);
 
     cpu.af.setHi(total);
+}
+
+fn addAC(cpu: *c.CPU) void {
+    var v1: u8 = cpu.af.hi();
+    var v2: u8 = cpu.bc.lo();
+
+    var total: u8 = add_and_set_flags(cpu, v1, v2);
+
+    cpu.af.setHi(total);
+}
+
+fn addAB(cpu: *c.CPU) void {
+    var v1: u8 = cpu.af.hi();
+    var v2: u8 = cpu.bc.hi();
+
+    var total: u8 = add_and_set_flags(cpu, v1, v2);
+
+    cpu.af.setHi(total);
+
 }
 
 // LOADS
@@ -252,6 +301,10 @@ fn ldSpu16(cpu: *c.CPU) void {
 // LD HL,u16
 fn ldHlu16(cpu: *c.CPU) void {
     cpu.hl.set(cpu.popPC16());
+}
+
+fn ldDeu16(cpu: *c.CPU) void {
+    cpu.de.set(cpu.popPC16());
 }
 
 // LD (HL),E
@@ -293,7 +346,6 @@ fn jrNz8(cpu: *c.CPU) void {
     var address: u16 = cpu.popPC();
     if (!cpu.Z()) {
         var next: u16 = cpu.pc + address;
-        print("Jumping to {x}\n", .{next});
         cpu.pc = next;
     }
 }
@@ -306,15 +358,17 @@ fn jpu16(cpu: *c.CPU) void {
 }
 
 // RET NZ
-// If Z is negative, pop address from stack and jump to it.
+// If Z is negative, pop return address from stack and jump to it.
 fn retNz(cpu: *c.CPU) void {
     if (!cpu.Z()) {
         cpu.pc = cpu.popStack();
     }
 }
 
+// RET NC
+// If C, pop return address from stack and jump to it.
 fn retNc(cpu: *c.CPU) void {
-    if (!cpu.C()) {
+    if (cpu.C()) {
         cpu.pc = cpu.popStack();
     }
 }
