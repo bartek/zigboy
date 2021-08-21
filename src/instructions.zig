@@ -26,6 +26,7 @@ pub const Opcode = struct {
 };
 
 pub fn operation(cpu: *c.CPU, opcode: u16) Opcode {
+    print("0x{x} ", .{opcode});
     var op: Opcode = .{
         .label = undefined,
         .value = opcode, // This is repeated. Not sure why Zig doesn't allow it to be omitted in the subsequent usage.
@@ -213,6 +214,8 @@ pub fn operation(cpu: *c.CPU, opcode: u16) Opcode {
         },
     }
 
+    print("{s}\n", .{op.label});
+
     return op;
 }
 
@@ -340,10 +343,12 @@ fn xorAA(cpu: *c.CPU) void {
 // Unconditional jump to the relative address specified by popping PC, only
 // occurring if Z is false
 fn jrNz8(cpu: *c.CPU) void {
-    var address: u16 = cpu.popPC();
+    var offset = @bitCast(i8, cpu.popPC());
+
     if (!cpu.Z()) {
-        var next: u16 = cpu.pc + address;
-        cpu.pc = next;
+        var result = @intCast(i16, cpu.pc);
+        result +%= offset;
+        cpu.pc = @intCast(u16,  result);
     }
 }
 

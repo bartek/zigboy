@@ -96,20 +96,21 @@ pub const CPU = struct {
             "H: {X:0>2} " ++
             "L: {X:0>2} " ++
             "SP: {X:0>4} " ++
-            "PC: 00:{d:0>4} " ++
-            "({X:0>2} {X:0>2} {X:0>2} {X:0>2})\n", .{ self.af.hi(), self.af.lo(), self.bc.hi(), self.bc.lo(), self.de.hi(), self.de.lo(), self.hl.hi(), self.hl.lo(), self.sp, self.pc, mem, mem1, mem2, mem3 });
+            "PC: 00:{X:0>4} " ++
+            "({X:0>2} {X:0>2} {X:0>2} {X:0>2}) ", .{ self.af.hi(), self.af.lo(), self.bc.hi(), self.bc.lo(), self.de.hi(), self.de.lo(), self.hl.hi(), self.hl.lo(), self.sp, self.pc, mem, mem1, mem2, mem3 });
     }
 
     // tick ticks the CPU
     pub fn tick(self: *CPU) void {
         self.debug();
         var opcode = self.popPC();
-        self.execute(instructions.operation(self, opcode));
+        var instruction = instructions.operation(self, opcode);
+        self.execute(instruction);
     }
 
     // popPC reads a single byte from memory and increments PC
-    pub fn popPC(self: *CPU) u16 {
-        var opcode: u16 = self.memory.read(self.pc);
+    pub fn popPC(self: *CPU) u8 {
+        var opcode: u8 = self.memory.read(self.pc);
         self.pc +%= 1;
         return opcode;
     }
