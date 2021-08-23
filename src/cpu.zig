@@ -122,13 +122,22 @@ pub const CPU = struct {
         return b1 | (b2 << 8);
     }
 
+
+    // pushStack pushes two bytes onto the stack and decrements stack pointer
+    // twice
+    pub fn pushStack(self: *CPU, value: u16) void {
+        self.memory.write(self.sp-1, @intCast(u8, (value & 0xff00) >> 8));
+        self.memory.write(self.sp-2, @intCast(u8, (value & 0xff)));
+        self.sp -= 2;
+    }
+
     // popStack pops the next 16 bit value off the stack and increments SP
     pub fn popStack(self: *CPU) u16 {
-        var lo: u16 = self.memory.read(self.sp);
-        var hi: u16 = self.memory.read(self.sp + 1);
+        var b1: u16 = self.memory.read(self.sp);
+        var b2: u16 = self.memory.read(self.sp + 1);
         self.sp += 2;
 
-        return (hi << 8) | lo;
+        return b1 | (b2 << 8);
     }
 
     // execute accepts an Opcode struct and executes the packed instruction
@@ -150,32 +159,32 @@ pub const CPU = struct {
     }
 
     // Zero Flag. Set when the result of a mathemetical instruction is zero
-    pub fn Z(self: *CPU) bool {
+    pub fn zero(self: *CPU) bool {
         return self.af.hilo() >> 7 & 1 == 1;
     }
 
     // Carry Flag. Used by conditional jumps and instructions such as ADC, SBC, RL, RLA, etc.
-    pub fn C(self: *CPU) bool {
+    pub fn carry(self: *CPU) bool {
         return self.af.hilo() >> 4 & 1 == 1;
     }
 
     // setZ sets the zero flag
-    pub fn setZ(self: *CPU, on: bool) void {
+    pub fn setZero(self: *CPU, on: bool) void {
         self.setFlag(7, on);
     }
 
     // setN sets the negative flag
-    pub fn setN(self: *CPU, on: bool) void {
+    pub fn setNegative(self: *CPU, on: bool) void {
         self.setFlag(6, on);
     }
 
     // setH sets the half carry flag
-    pub fn setH(self: *CPU, on: bool) void {
+    pub fn setHalfCarry(self: *CPU, on: bool) void {
         self.setFlag(5, on);
     }
 
     // setC sets the carry flag
-    pub fn setC(self: *CPU, on: bool) void {
+    pub fn setCarry(self: *CPU, on: bool) void {
         self.setFlag(4, on);
     }
 };

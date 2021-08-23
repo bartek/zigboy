@@ -45,6 +45,17 @@ pub fn operation(cpu: *c.CPU, opcode: u16) Opcode {
                 .steps = &[_]Step{},
             };
         },
+        0x6 => {
+            op = .{
+                .label = "LD B,u8",
+                .value = opcode,
+                .length = 2,
+                .cycles = 8,
+                .steps = &[_]Step{
+                    ldBu8,
+                },
+            };
+        },
         0x11 => {
             op = .{
                 .label = "LD DE,u16",
@@ -56,14 +67,36 @@ pub fn operation(cpu: *c.CPU, opcode: u16) Opcode {
                 },
             };
         },
+        0x17 => {
+            op = .{
+                .label = "RLA",
+                .value = opcode,
+                .length = 1,
+                .cycles = 4,
+                .steps = &[_]Step{
+                    rla,
+                },
+            };
+        },
+        0x1a => {
+            op = .{
+                .label = "LD A,(DE)",
+                .value = opcode,
+                .length = 1,
+                .cycles = 8,
+                .steps = &[_]Step{
+                    ldAMDe,
+                },
+            };
+        },
         0x20 => {
             op = .{
-                .label = "JR NZ,u8",
+                .label = "JR NZ,i8",
                 .value = opcode,
                 .length = 2,
                 .cycles = 12, // FIXME: with/without branch timing to review
                 .steps = &[_]Step{
-                    jrNz8,
+                    jrNzi8,
                 },
             };
         },
@@ -78,6 +111,61 @@ pub fn operation(cpu: *c.CPU, opcode: u16) Opcode {
                 },
             };
         },
+        0x3e => {
+            op = .{
+                .label = "LD A,u8",
+                .value = opcode,
+                .length = 2,
+                .cycles = 8,
+                .steps = &[_]Step{
+                    ldAu8,
+                },
+            };
+        },
+        0x4f => {
+            op = .{
+                .label = "LD C,A",
+                .value = opcode,
+                .length = 1,
+                .cycles = 3,
+                .steps = &[_]Step{
+                    ldCA,
+                },
+            };
+        },
+        0x5 => {
+            op = .{
+                .label = "LD D,B",
+                .value = opcode,
+                .length = 1,
+                .cycles = 4,
+                .steps = &[_]Step{
+                    ldDB,
+                },
+            };
+        },
+        0x77 => {
+            op = .{
+                .label = "LD (HL),A",
+                .value = opcode,
+                .length = 1,
+                .cycles = 8,
+                .steps = &[_]Step{
+                    ldHlA,
+                },
+            };
+        },
+        0xc1 => {
+            op = .{
+                .label = "POP BC",
+                .value = opcode,
+                .length = 1,
+                .cycles = 12,
+                .steps = &[_]Step{
+                    popBC,
+                },
+            };
+        },
         0xc3 => {
             op = .{
                 .label = "JP u16",
@@ -86,6 +174,28 @@ pub fn operation(cpu: *c.CPU, opcode: u16) Opcode {
                 .cycles = 16,
                 .steps = &[_]Step{
                     jpu16,
+                },
+            };
+        },
+        0xc5 => {
+            op = .{
+                .label = "PUSH BC",
+                .value = opcode,
+                .length = 1,
+                .cycles = 16,
+                .steps = &[_]Step{
+                    pushBC,
+                },
+            };
+        },
+        0xcd => {
+            op = .{
+                .label = "CALL u16",
+                .value = opcode,
+                .length = 3,
+                .cycles = 124,
+                .steps = &[_]Step{
+                    callu16,
                 },
             };
         },
@@ -118,7 +228,7 @@ pub fn operation(cpu: *c.CPU, opcode: u16) Opcode {
                 .length = 1,
                 .cycles = 8,
                 .steps = &[_]Step{
-                    ldHlA,
+                    ldHlADec,
                 },
             };
         },
@@ -201,6 +311,28 @@ pub fn operation(cpu: *c.CPU, opcode: u16) Opcode {
                 },
             };
         },
+        0xe, 0xe0 => {
+            op = .{
+                .label = "LD (FF00+u8),A",
+                .value = opcode,
+                .length = 2,
+                .cycles = 12,
+                .steps = &[_]Step{
+                    ldAintoN,
+                },
+            };
+        },
+        0xe2 => {
+            op = .{
+                .label = "LD (FF00+C),A",
+                .value = opcode,
+                .length = 2,
+                .cycles = 12,
+                .steps = &[_]Step{
+                    ldAintoC,
+                },
+            };
+        },
 
         // -- Extended Callbacks
         // called via the opcode 0xcb which is an extended opcode meaning
@@ -229,6 +361,17 @@ fn extendedOperation(cpu: *c.CPU, opcode: u16) Opcode {
     };
 
     switch (opcode) {
+        0x11 => {
+            op = .{
+                .label = "RL C",
+                .value = opcode,
+                .length = 2,
+                .cycles = 8,
+                .steps = &[_]Step{
+                    rlC,
+                },
+            };
+        },
         0x7c => {
             op = .{
                 .label = "BIT 7,H",
@@ -241,7 +384,7 @@ fn extendedOperation(cpu: *c.CPU, opcode: u16) Opcode {
             };
         },
         else => {
-            print("[extended] not implemented\n", .{});
+            print("[extended] not implemented 0x{x}\n", .{opcode});
         },
     }
 
@@ -255,9 +398,9 @@ fn extendedOperation(cpu: *c.CPU, opcode: u16) Opcode {
 fn add_and_set_flags(cpu: *c.CPU, v1: u8, v2: u8) u8 {
     var total: u8 = v1 +% v2;
 
-    cpu.setZ(total == 0);
-    cpu.setH( (v1 & 0x0F) + (v2 & 0x0F) > 0x0F);
-    cpu.setC(total > 0xFF); // If result is greater than 255
+    cpu.setZero(total == 0);
+    cpu.setHalfCarry( (v1 & 0x0F) + (v2 & 0x0F) > 0x0F);
+    cpu.setCarry(total > 0xFF); // If result is greater than 255
 
     return total;
 }
@@ -292,6 +435,32 @@ fn addAB(cpu: *c.CPU) void {
 
 // LOADS
 
+// LD A,(DE)
+// Read at memory location (DE) and load into A
+fn ldAMDe(cpu: *c.CPU) void {
+    cpu.af.setHi(cpu.memory.read(cpu.de.hilo()));
+}
+
+// LD C,A
+fn ldCA(cpu: *c.CPU) void {
+    cpu.bc.setLo(cpu.af.hi());
+}
+
+// LD D,B
+fn ldDB(cpu: *c.CPU) void {
+    cpu.de.setHi(cpu.bc.hi());
+}
+
+// LD A,u8
+fn ldAu8(cpu: *c.CPU) void {
+    cpu.af.setHi(cpu.popPC());
+}
+
+// LD B,u8
+fn ldBu8(cpu: *c.CPU) void {
+    cpu.bc.setHi(cpu.popPC());
+}
+
 // LD SP,16
 fn ldSpu16(cpu: *c.CPU) void {
     cpu.sp = cpu.popPC16();
@@ -306,16 +475,36 @@ fn ldDeu16(cpu: *c.CPU) void {
     cpu.de.set(cpu.popPC16());
 }
 
+// LD (HL),A
+// Load A into memory address HL
+fn ldHlA(cpu: *c.CPU) void {
+    cpu.memory.write(cpu.hl.hilo(), cpu.af.hi());
+}
+
 // LD (HL),E
 // Load E into memory address HL
 fn ldHlE(cpu: *c.CPU) void {
     cpu.memory.write(cpu.hl.hilo(), cpu.de.hi());
 }
 
+
+// LD (FF00+u8),A
+// Load A into [0xff00 + N]
+fn ldAintoN(cpu: *c.CPU) void {
+    var address: u16 = cpu.popPC();
+    cpu.memory.write(0xff00 | address, cpu.af.hi());
+}
+
+// LD (FF00+C),A
+// Load A into [0xff00 + C]
+fn ldAintoC(cpu: *c.CPU) void {
+    cpu.memory.write(0xff00 | @intCast(u16, cpu.bc.hi()), cpu.af.hi());
+}
+
 // LD (HL-),A
 // Load to the address specified by the 16-bit register HL, data from A
 // The value of HL is decremented after memory write
-fn ldHlA(cpu: *c.CPU) void {
+fn ldHlADec(cpu: *c.CPU) void {
     var address: u16 = cpu.hl.hilo();
     cpu.memory.write(address, cpu.af.hi());
     cpu.hl.set(cpu.hl.hilo() - 1);
@@ -331,21 +520,29 @@ fn xorAA(cpu: *c.CPU) void {
     cpu.af.setHi(v);
 
     // Set flags
-    cpu.setZ(v == 0);
-    cpu.setN(false);
-    cpu.setH(false);
-    cpu.setC(false);
+    cpu.setZero(v == 0);
+    cpu.setNegative(false);
+    cpu.setHalfCarry(false);
+    cpu.setCarry(false);
+}
+
+// POP u16
+// Pop register u16 from the stack
+
+// POP BC
+fn popBC(cpu: *c.CPU) void {
+    cpu.bc.set(cpu.popStack());
 }
 
 // Jumps
 
-// JR NZ,u8
+// JR NZ,i8
 // Unconditional jump to the relative address specified by popping PC, only
 // occurring if Z is false
-fn jrNz8(cpu: *c.CPU) void {
+fn jrNzi8(cpu: *c.CPU) void {
     var offset = @bitCast(i8, cpu.popPC());
 
-    if (!cpu.Z()) {
+    if (!cpu.zero()) {
         var result = @intCast(i16, cpu.pc);
         result +%= offset;
         cpu.pc = @intCast(u16,  result);
@@ -362,7 +559,7 @@ fn jpu16(cpu: *c.CPU) void {
 // RET NZ
 // If Z is negative, pop return address from stack and jump to it.
 fn retNz(cpu: *c.CPU) void {
-    if (!cpu.Z()) {
+    if (!cpu.zero()) {
         cpu.pc = cpu.popStack();
     }
 }
@@ -370,7 +567,7 @@ fn retNz(cpu: *c.CPU) void {
 // RET NC
 // If C, pop return address from stack and jump to it.
 fn retNc(cpu: *c.CPU) void {
-    if (cpu.C()) {
+    if (cpu.carry()) {
         cpu.pc = cpu.popStack();
     }
 }
@@ -391,8 +588,65 @@ fn bit7h(cpu: *c.CPU) void {
     var v: u8 = cpu.hl.hi();
     var index: u3 = 7;
 
-    cpu.setZ((v & (@as(usize, 1) << index)) == 0);
-    cpu.setN(false);
-    cpu.setH(true);
+    cpu.setZero((v & (@as(usize, 1) << index)) == 0);
+    cpu.setNegative(false);
+    cpu.setHalfCarry(true);
+}
+
+// PUSH
+// Push onto the stack
+
+// PUSH BC
+fn pushBC(cpu: *c.CPU) void {
+    cpu.pushStack(cpu.bc.hilo());
+}
+
+// CALL
+
+// Perform a CALL operation by pushing the current PC to the stack and jumping
+// to the next address
+fn callu16(cpu: *c.CPU) void {
+    var address: u16 = cpu.popPC16();
+    cpu.pushStack(cpu.pc);
+    cpu.pc = address;
+}
+
+// ROTATE
+// Rotate bits
+fn rotate(cpu: *c.CPU, value: u8) u8 {
+    var carry: u8 = value >> 7;
+    var r: u8 = (value << 1) & 0xFF | carry;
+
+    cpu.setZero(r == 0);
+    cpu.setNegative(false);
+    cpu.setHalfCarry(false);
+    cpu.setCarry(carry == 1);
+
+    return r;
+}
+
+// RL C
+// Rotate C to the left
+fn rlC(cpu: *c.CPU) void {
+    var r: u8 = rotate(cpu, cpu.bc.lo());
+    cpu.bc.setLo(r);
+}
+
+// RLA
+// Rotate register A left through carry
+fn rla(cpu: *c.CPU) void {
+    var value = cpu.af.hi();
+
+    var new_carry: u8 = 0;
+    if (cpu.carry()) {
+        new_carry = 1;
+    }
+
+    cpu.af.setHi( (value << 1) + new_carry );
+
+    cpu.setCarry(value > 0x7F);
+    cpu.setZero(false);
+    cpu.setNegative(false);
+    cpu.setHalfCarry(false);
 }
 
