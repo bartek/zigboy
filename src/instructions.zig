@@ -289,14 +289,14 @@ pub fn operation(cpu: *c.CPU, opcode: u16) Opcode {
                 },
             };
         },
-        0xc => {
+        0x0c => {
             op = .{
-                .label = "RET NZ",
+                .label = "INC C",
                 .value = opcode,
                 .length = 1,
-                .cycles = 8,
+                .cycles = 4,
                 .steps = &[_]Step{
-                    retNz,
+                    incC,
                 },
             };
         },
@@ -311,7 +311,18 @@ pub fn operation(cpu: *c.CPU, opcode: u16) Opcode {
                 },
             };
         },
-        0xe, 0xe0 => {
+        0x0e => {
+            op = .{
+                .label = "LD C,u8",
+                .value = opcode,
+                .length = 2,
+                .cycles = 8,
+                .steps = &[_]Step{
+                    ldCu8,
+                },
+            };
+        },
+        0xe0 => {
             op = .{
                 .label = "LD (FF00+u8),A",
                 .value = opcode,
@@ -456,6 +467,11 @@ fn ldAu8(cpu: *c.CPU) void {
     cpu.af.setHi(cpu.popPC());
 }
 
+// LD C,u8
+fn ldCu8(cpu: *c.CPU) void {
+    cpu.bc.setLo(cpu.popPC());
+}
+
 // LD B,u8
 fn ldBu8(cpu: *c.CPU) void {
     cpu.bc.setHi(cpu.popPC());
@@ -572,12 +588,27 @@ fn retNc(cpu: *c.CPU) void {
     }
 }
 
+fn halfCarryAdd(v1: u8, v2: u8) bool {
+    return (v1 & 0xf) + (v2 & 0xf) > 0xf;
+}
+
 // Increments
 //
 // INC BC
+// FIXME: Flags?
 fn incBc(cpu: *c.CPU) void {
     var v: u16 = cpu.bc.hilo();
     cpu.bc.set(v + 1);
+}
+
+fn incC(cpu: *c.CPU) void {
+    var v: u8 = cpu.bc.lo();
+    var total: u8 = v + 1;
+    cpu.bc.setLo(total);
+
+    cpu.setZero(total == 0);
+    cpu.setNegative(false);
+    cpu.setHalfCarry(halfCarryAdd(v, 1));
 }
 
 // Extended Operations

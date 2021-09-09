@@ -103,6 +103,7 @@ pub const CPU = struct {
     // tick ticks the CPU
     pub fn tick(self: *CPU) void {
         self.debug();
+
         var opcode = self.popPC();
         var instruction = instructions.operation(self, opcode);
         self.execute(instruction);
@@ -122,12 +123,11 @@ pub const CPU = struct {
         return b1 | (b2 << 8);
     }
 
-
     // pushStack pushes two bytes onto the stack and decrements stack pointer
     // twice
     pub fn pushStack(self: *CPU, value: u16) void {
-        self.memory.write(self.sp-1, @intCast(u8, (value & 0xff00) >> 8));
-        self.memory.write(self.sp-2, @intCast(u8, (value & 0xff)));
+        self.memory.write(self.sp - 1, @intCast(u8, (value & 0xff00) >> 8));
+        self.memory.write(self.sp - 2, @intCast(u8, (value & 0xff)));
         self.sp -= 2;
     }
 
