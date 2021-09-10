@@ -1,4 +1,5 @@
 const std = @import("std");
+const eql = std.mem.eql;
 const print = std.debug.print;
 const fs = std.fs;
 const cwd = fs.cwd();
@@ -31,21 +32,24 @@ pub fn main() anyerror!void {
 
     var i: usize = 0;
     while (true) : (i += 1) {
-        print("{d} ", .{i});
         cpu.tick();
 
         reader.readUntilDelimiterArrayList(&line_buffer, '\n', std.math.maxInt(usize)) catch |err| switch (err) {
-            error.EndOfStream => { break; },
-            else => |e| return e,
+            error.EndOfStream => {
+                // Do nothing, boot rom log is done.
+            },
+            else => |e| { return e; },
         };
 
         var line = line_buffer.items;
-        print("{d} {s}\n", .{i, line});
 
-        // Pause on each line
-        var buf: [10]u8 = undefined;
+        // Pause when state differs from bootromlog
+        if (!eql(u8, cpu.state().items, line_buffer.items)) {
+            print("{d} {s}\n", .{i, cpu.state().items});
 
-        if (i > 24588) {
+            // Display current CPU state
+            print("{d} {s}\n", .{i, line});
+            var buf: [10]u8 = undefined;
             var userInput = try stdin.readUntilDelimiterOrEof(buf[0..], '\n');
         }
     }

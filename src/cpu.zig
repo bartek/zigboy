@@ -1,6 +1,9 @@
-const std = @import("std");
-const print = std.debug.print;
 const Allocator = std.mem.Allocator;
+const ArrayList = std.ArrayList;
+const ArrayListAligned = std.ArrayListAligned;
+const fmt = std.fmt;
+const print = std.debug.print;
+const std = @import("std");
 
 const instructions = @import("./instructions.zig");
 const memory = @import("./memory.zig");
@@ -62,6 +65,8 @@ pub const CPU = struct {
 
     memory: memory.Memory,
 
+    stateRepr: ArrayList(u8),
+
     pub fn init(allocator: *Allocator) !CPU {
         return CPU{
             .memory = try memory.Memory.init(allocator),
@@ -71,11 +76,13 @@ pub const CPU = struct {
             .hl = register.init(0x00),
             .pc = 0x00,
             .sp = 0x00,
+            .stateRepr = ArrayList(u8).init(allocator),
         };
     }
 
     pub fn deinit(self: *CPU) void {
         self.memory.deinit();
+        self.stateRepr.deinit();
     }
 
     // debug prints debug information
@@ -87,7 +94,10 @@ pub const CPU = struct {
         var mem2: u8 = self.memory.read(self.pc + 2);
         var mem3: u8 = self.memory.read(self.pc + 3);
 
-        print("A: {X:0>2} " ++
+
+        self.stateRepr.clearAndFree();
+
+        self.stateRepr.writer().print("A: {X:0>2} " ++
             "F: {X:0>2} " ++
             "B: {X:0>2} " ++
             "C: {X:0>2} " ++
@@ -97,7 +107,14 @@ pub const CPU = struct {
             "L: {X:0>2} " ++
             "SP: {X:0>4} " ++
             "PC: 00:{X:0>4} " ++
-            "({X:0>2} {X:0>2} {X:0>2} {X:0>2}) ", .{ self.af.hi(), self.af.lo(), self.bc.hi(), self.bc.lo(), self.de.hi(), self.de.lo(), self.hl.hi(), self.hl.lo(), self.sp, self.pc, mem, mem1, mem2, mem3 });
+            "({X:0>2} {X:0>2} {X:0>2} {X:0>2})", .{ self.af.hi(), self.af.lo(), self.bc.hi(), self.bc.lo(), self.de.hi(), self.de.lo(), self.hl.hi(), self.hl.lo(), self.sp, self.pc, mem, mem1, mem2, mem3 }
+        ) catch |err| {
+            print("??", .{});
+        };
+    }
+
+    pub fn state(self: *CPU) ArrayListAligned(u8, null) {
+        return self.stateRepr;
     }
 
     // tick ticks the CPU
