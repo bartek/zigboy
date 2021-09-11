@@ -1,11 +1,9 @@
 const Allocator = std.mem.Allocator;
-const ArrayList = std.ArrayList;
-const ArrayListAligned = std.ArrayListAligned;
 const fmt = std.fmt;
-const print = std.debug.print;
 const std = @import("std");
 
 const instructions = @import("./instructions.zig");
+const Opcode = instructions.Opcode;
 const memory = @import("./memory.zig");
 const flipBit = @import("./functions.zig").flipBit;
 
@@ -45,6 +43,7 @@ pub const register = struct {
     }
 };
 
+
 // The Game Boy CPU is composed of 8 different registers which are responsible
 // for holding onto little pieces of data that the CPU can manipulate when it
 // executes various instructions. These registers are named A, B, C, D, E, F, H,
@@ -65,8 +64,6 @@ pub const CPU = struct {
 
     memory: memory.Memory,
 
-    stateRepr: ArrayList(u8),
-
     pub fn init(allocator: *Allocator) !CPU {
         return CPU{
             .memory = try memory.Memory.init(allocator),
@@ -76,54 +73,19 @@ pub const CPU = struct {
             .hl = register.init(0x00),
             .pc = 0x00,
             .sp = 0x00,
-            .stateRepr = ArrayList(u8).init(allocator),
         };
     }
 
     pub fn deinit(self: *CPU) void {
         self.memory.deinit();
-        self.stateRepr.deinit();
-    }
-
-    // debug prints debug information
-    // Matches format at https://github.com/wheremyfoodat/Gameboy-logs
-    // to allow for programmatic comparison.
-    pub fn debug(self: *CPU) void {
-        var mem: u8 = self.memory.read(self.pc);
-        var mem1: u8 = self.memory.read(self.pc + 1);
-        var mem2: u8 = self.memory.read(self.pc + 2);
-        var mem3: u8 = self.memory.read(self.pc + 3);
-
-
-        self.stateRepr.clearAndFree();
-
-        self.stateRepr.writer().print("A: {X:0>2} " ++
-            "F: {X:0>2} " ++
-            "B: {X:0>2} " ++
-            "C: {X:0>2} " ++
-            "D: {X:0>2} " ++
-            "E: {X:0>2} " ++
-            "H: {X:0>2} " ++
-            "L: {X:0>2} " ++
-            "SP: {X:0>4} " ++
-            "PC: 00:{X:0>4} " ++
-            "({X:0>2} {X:0>2} {X:0>2} {X:0>2})", .{ self.af.hi(), self.af.lo(), self.bc.hi(), self.bc.lo(), self.de.hi(), self.de.lo(), self.hl.hi(), self.hl.lo(), self.sp, self.pc, mem, mem1, mem2, mem3 }
-        ) catch |err| {
-            print("??", .{});
-        };
-    }
-
-    pub fn state(self: *CPU) ArrayListAligned(u8, null) {
-        return self.stateRepr;
     }
 
     // tick ticks the CPU
-    pub fn tick(self: *CPU) void {
-        self.debug();
-
+    pub fn tick(self: *CPU) Opcode {
         var opcode = self.popPC();
         var instruction = instructions.operation(self, opcode);
         self.execute(instruction);
+        return instruction;
     }
 
     // popPC reads a single byte from memory and increments PC

@@ -8,6 +8,7 @@ const warn = std.log.warn;
 const stdin = std.io.getStdIn().reader();
 
 const c = @import("./cpu.zig");
+const State = @import("./state.zig").State;
 
 pub fn main() anyerror!void {
     const allocator = std.heap.page_allocator;
@@ -22,6 +23,9 @@ pub fn main() anyerror!void {
 
     try cpu.memory.loadRom(buffer);
 
+    // State is a connection between modules for debugging, useful things
+    var state = try State.init(allocator, &cpu);
+
     // Open the bootromlog for comparison
     var log = try cwd.openFile("bootromlog.txt", .{});
     defer log.close();
@@ -32,7 +36,12 @@ pub fn main() anyerror!void {
 
     var i: usize = 0;
     while (true) : (i += 1) {
-        cpu.tick();
+        // Update state before each CPU tick
+        try state.append();
+
+        var instruction = cpu.tick();
+
+        try state.append_instruction(instruction.label);
 
         reader.readUntilDelimiterArrayList(&line_buffer, '\n', std.math.maxInt(usize)) catch |err| switch (err) {
             error.EndOfStream => {
@@ -44,11 +53,16 @@ pub fn main() anyerror!void {
         var line = line_buffer.items;
 
         // Pause when state differs from bootromlog
-        if (!eql(u8, cpu.state().items, line_buffer.items)) {
-            print("{d} {s}\n", .{i, cpu.state().items});
+        if (!eql(u8, state.top(), line_buffer.items)) {
+            print("\n-----------------\n", .{});
+            print("{d}\n", .{i});
+            for (state.current()) |l, index| {
+                print("\t{s}\t{s}\n", .{l, state.instructions.items[index]});
+            }
 
-            // Display current CPU state
-            print("{d} {s}\n", .{i, line});
+            print("+\t{s}\n", .{line});
+
+            print("\n-----------------\n", .{});
             var buf: [10]u8 = undefined;
             var userInput = try stdin.readUntilDelimiterOrEof(buf[0..], '\n');
         }
