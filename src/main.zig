@@ -54,15 +54,14 @@ pub fn main() anyerror!void {
 
         // Pause when state differs from bootromlog
         if (!eql(u8, state.top(), line_buffer.items)) {
-            print("\n-----------------\n", .{});
-            print("{d}\n", .{i});
+            print("\n\n", .{});
             for (state.current()) |l, index| {
                 print("\t{s}\t{s}\n", .{l, state.instructions.items[index]});
             }
 
             print("+\t{s}\n", .{line});
 
-            print("\n-----------------\n", .{});
+            print("\n\n", .{});
             var buf: [10]u8 = undefined;
             var userInput = try stdin.readUntilDelimiterOrEof(buf[0..], '\n');
         }

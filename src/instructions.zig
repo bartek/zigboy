@@ -446,7 +446,8 @@ fn addAB(cpu: *c.CPU) void {
 // LD A,(DE)
 // Read at memory location (DE) and load into A
 fn ldAMDe(cpu: *c.CPU) void {
-    cpu.af.setHi(cpu.memory.read(cpu.de.hilo()));
+    var v: u8 = cpu.memory.read(cpu.de.hilo());
+    cpu.af.setHi(v);
 }
 
 // LD C,A

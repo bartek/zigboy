@@ -14,12 +14,14 @@ pub const Memory = struct {
     memory: []u8,
 
     boot_rom: [256]u8,
+    boot_rom_enabled: bool,
 
     pub fn init(allocator: *Allocator) !Memory {
         return Memory{
             .allocator = allocator,
             .memory = try allocator.alloc(u8, memory_size),
             .boot_rom = boot.rom,
+            .boot_rom_enabled = true,
         };
     }
 
@@ -36,11 +38,25 @@ pub const Memory = struct {
     }
 
     pub fn write(self: *Memory, address: u16, value: u8) void {
-        self.memory[address] = value;
+
+        switch(address) {
+            // Register used to unmap bootrom. Not used by regular games
+            0xff50 => {
+                print("FIXME: NO MORE BOOTROM!", .{});
+                if (value == 1) {
+                    self.boot_rom_enabled = false;
+                }
+            },
+            else => {
+                self.memory[address] = value;
+            },
+        }
     }
 
     // loadRom loads a buffer into memory, starting at 0x100
     // as < 0x100 is reserved for the bootrom
+    // FIXME: IS this writing into memory array? I don't think so, thus that
+    // will always be .. garbage!
     pub fn loadRom(self: *Memory, buffer: []u8) !void {
         for (buffer) |b, index| {
             self.write(@intCast(u16, index + 0x100), b);
