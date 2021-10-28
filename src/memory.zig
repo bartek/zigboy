@@ -55,8 +55,6 @@ pub const Memory = struct {
 
     // loadRom loads a buffer into memory, starting at 0x100
     // as < 0x100 is reserved for the bootrom
-    // FIXME: IS this writing into memory array? I don't think so, thus that
-    // will always be .. garbage!
     pub fn loadRom(self: *Memory, buffer: []u8) !void {
         for (buffer) |b, index| {
             self.write(@intCast(u16, index + 0x100), b);

@@ -414,7 +414,7 @@ fn add_and_set_flags(cpu: *c.CPU, v1: u8, v2: u8) u8 {
 }
 
 fn addAE(cpu: *c.CPU) void {
-    var v1: u8 = cpu.de.hi();
+    var v1: u8 = cpu.de.lo();
     var v2: u8 = cpu.af.hi();
 
     var total: u8 = add_and_set_flags(cpu, v1, v2);
@@ -498,7 +498,7 @@ fn ldHlA(cpu: *c.CPU) void {
 // LD (HL),E
 // Load E into memory address HL
 fn ldHlE(cpu: *c.CPU) void {
-    cpu.memory.write(cpu.hl.hilo(), cpu.de.hi());
+    cpu.memory.write(cpu.hl.hilo(), cpu.de.lo());
 }
 
 
@@ -512,7 +512,7 @@ fn ldAintoN(cpu: *c.CPU) void {
 // LD (FF00+C),A
 // Load A into [0xff00 + C]
 fn ldAintoC(cpu: *c.CPU) void {
-    cpu.memory.write(0xff00 | @intCast(u16, cpu.bc.hi()), cpu.af.hi());
+    cpu.memory.write(0xff00 | @intCast(u16, cpu.bc.lo()), cpu.af.hi());
 }
 
 // LD (HL-),A
@@ -579,7 +579,7 @@ fn retNz(cpu: *c.CPU) void {
 }
 
 // RET NC
-// If C, pop return address from stack and jump to it.
+// If carry,  pop return address from stack and jump to it.
 fn retNc(cpu: *c.CPU) void {
     if (cpu.carry()) {
         cpu.pc = cpu.popStack();
@@ -593,8 +593,8 @@ fn halfCarryAdd(v1: u8, v2: u8) bool {
 // Increments
 //
 // INC BC
-// FIXME: Flags?
 fn incBc(cpu: *c.CPU) void {
+    print("FIXME: FLAGS", .{});
     var v: u16 = cpu.bc.hilo();
     cpu.bc.set(v + 1);
 }
