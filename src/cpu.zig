@@ -64,7 +64,7 @@ pub const CPU = struct {
 
     memory: memory.Memory,
 
-    pub fn init(allocator: *Allocator) !CPU {
+    pub fn init(allocator: Allocator) !CPU {
         return CPU{
             .memory = try memory.Memory.init(allocator),
             .af = register.init(0x00),

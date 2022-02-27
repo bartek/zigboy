@@ -10,13 +10,13 @@ pub const Memory = struct {
     // address 65,536 positions of memory.
     const memory_size = 65536;
 
-    allocator: *Allocator,
+    allocator: Allocator,
     memory: []u8,
 
     boot_rom: [256]u8,
     boot_rom_enabled: bool,
 
-    pub fn init(allocator: *Allocator) !Memory {
+    pub fn init(allocator: Allocator) !Memory {
         return Memory{
             .allocator = allocator,
             .memory = try allocator.alloc(u8, memory_size),

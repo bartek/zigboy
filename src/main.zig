@@ -16,7 +16,7 @@ pub fn main() anyerror!void {
     var cpu = try c.CPU.init(allocator);
 
     // Load Tetris into memory
-    const buffer = cwd.readFileAlloc(allocator, "./roms/tetris.gb", 32768) catch |err| {
+    const buffer = cwd.readFileAlloc(allocator, "./roms/DMG_ROM.bin", 32768) catch |err| {
         warn("unable to open file: {s}\n", .{@errorName(err)});
         return err;
     };
@@ -27,7 +27,7 @@ pub fn main() anyerror!void {
     var state = try State.init(allocator, &cpu);
 
     // Open the bootromlog for comparison
-    var log = try cwd.openFile("bootromlog.txt", .{});
+    var log = try cwd.openFile("./debug/bootromlog.txt", .{});
     defer log.close();
 
     const reader = log.reader();
@@ -62,8 +62,8 @@ pub fn main() anyerror!void {
             print("+\t{s}\n", .{line});
 
             print("\n\n", .{});
-            var buf: [10]u8 = undefined;
-            var userInput = try stdin.readUntilDelimiterOrEof(buf[0..], '\n');
+            // var buf: [10]u8 = undefined;
+            // try stdin.readUntilDelimiterOrEof(buf[0..], '\n');
         }
     }
 }

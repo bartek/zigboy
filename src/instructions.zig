@@ -349,7 +349,7 @@ pub fn operation(cpu: *c.CPU, opcode: u16) Opcode {
         // the next immediate byte has to be decoded and treated as the opcode
         0xcb => {
             var next: u16 = cpu.popPC();
-            op = extendedOperation(cpu, next);
+            op = extendedOperation(next);
         },
         else => {
             print("not implemented 0x{x}\n", .{opcode});
@@ -359,7 +359,7 @@ pub fn operation(cpu: *c.CPU, opcode: u16) Opcode {
     return op;
 }
 
-fn extendedOperation(cpu: *c.CPU, opcode: u16) Opcode {
+fn extendedOperation(opcode: u16) Opcode {
     var op: Opcode = .{
         .label = undefined,
         .value = opcode, // This is repeated. Not sure why Zig doesn't allow it to be omitted in the subsequent usage.

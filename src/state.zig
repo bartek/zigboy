@@ -18,7 +18,7 @@ pub const State = struct {
     instructions: ArrayList([]const u8),
     cpu: *CPU,
 
-    pub fn init(allocator: *Allocator, cpu: *CPU) !State {
+    pub fn init(allocator: Allocator, cpu: *CPU) !State {
         return State{
             .cpu = cpu,
             .container = ArrayList([]u8).init(allocator),
