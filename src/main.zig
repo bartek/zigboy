@@ -16,7 +16,7 @@ pub fn main() anyerror!void {
     var cpu = try c.CPU.init(allocator);
 
     // Load Tetris into memory
-    const buffer = cwd.readFileAlloc(allocator, "./roms/DMG_ROM.bin", 32768) catch |err| {
+    const buffer = cwd.readFileAlloc(allocator, "./roms/tetris.gb", 32768) catch |err| {
         warn("unable to open file: {s}\n", .{@errorName(err)});
         return err;
     };
@@ -54,9 +54,10 @@ pub fn main() anyerror!void {
 
         // Pause when state differs from bootromlog
         if (!eql(u8, state.top(), line_buffer.items)) {
+            quickSleep();
             print("\n\n", .{});
             for (state.current()) |l, index| {
-                print("\t{s}\t{s}\n", .{l, state.instructions.items[index]});
+                print("{d}\t{s}\t{s}\n", .{i, l, state.instructions.items[index]});
             }
 
             print("+\t{s}\n", .{line});
@@ -66,4 +67,9 @@ pub fn main() anyerror!void {
             // try stdin.readUntilDelimiterOrEof(buf[0..], '\n');
         }
     }
+}
+
+
+fn quickSleep() void {
+    std.time.sleep(500 * std.time.ns_per_ms);
 }
