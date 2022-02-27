@@ -53,11 +53,10 @@ pub const Memory = struct {
         }
     }
 
-    // loadRom loads a buffer into memory, starting at 0x100
-    // as < 0x100 is reserved for the bootrom
+    // loadRom loads a buffer into memory
     pub fn loadRom(self: *Memory, buffer: []u8) !void {
         for (buffer) |b, index| {
-            self.write(@intCast(u16, index + 0x100), b);
+            self.write(@intCast(u16, index), b);
         }
     }
 };
