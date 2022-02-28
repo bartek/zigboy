@@ -43,7 +43,6 @@ pub const register = struct {
     }
 };
 
-
 // The Game Boy CPU is composed of 8 different registers which are responsible
 // for holding onto little pieces of data that the CPU can manipulate when it
 // executes various instructions. These registers are named A, B, C, D, E, F, H,
@@ -127,13 +126,23 @@ pub const CPU = struct {
         }
     }
 
+    // bitSet sets a bit for value.
+    fn bitSet(value: u8, comptime bit: u8) u8 {
+        return value | (@as(u8, 1) << bit);
+    }
+
+    // bitReset resets a bit for value.
+    fn bitReset(value: u8, comptime bit: u8) u8 {
+        return value & ~(@as(u8, 1) << bit);
+    }
+
     // The F register is a special register because it contains the values of 4
     // flags which allow the CPU to track particular states:
-    pub fn setFlag(self: *CPU, comptime index: u8, on: bool) void {
+    pub fn setFlag(self: *CPU, comptime bit: u8, on: bool) void {
         if (on) {
-            self.af.setLo(self.af.lo() | (1 << index));
+            self.af.setLo(bitSet(self.af.lo(), bit));
         } else {
-            self.af.setLo(self.af.lo() & flipBit(1 << index));
+            self.af.setLo(bitReset(self.af.lo(), bit));
         }
     }
 

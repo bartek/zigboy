@@ -47,7 +47,9 @@ pub fn main() anyerror!void {
             error.EndOfStream => {
                 // Do nothing, boot rom log is done.
             },
-            else => |e| { return e; },
+            else => |e| {
+                return e;
+            },
         };
 
         var line = line_buffer.items;
@@ -57,18 +59,14 @@ pub fn main() anyerror!void {
             quickSleep();
             print("\n\n", .{});
             for (state.current()) |l, index| {
-                print("{d}\t{s}\t{s}\n", .{i, l, state.instructions.items[index]});
+                print("{d}\t{s}\t{s}\n", .{ i, l, state.instructions.items[index] });
             }
 
             print("+\t{s}\n", .{line});
-
             print("\n\n", .{});
-            // var buf: [10]u8 = undefined;
-            // try stdin.readUntilDelimiterOrEof(buf[0..], '\n');
         }
     }
 }
-
 
 fn quickSleep() void {
     std.time.sleep(500 * std.time.ns_per_ms);

@@ -399,7 +399,6 @@ fn extendedOperation(opcode: u16) Opcode {
     return op;
 }
 
-
 // ADDS
 // add_and_set_flags performs an add instruction on the input values, storing them using the set
 // function. Also updates flags accordingly
@@ -407,7 +406,7 @@ fn add_and_set_flags(cpu: *c.CPU, v1: u8, v2: u8) u8 {
     var total: u8 = v1 +% v2;
 
     cpu.setZero(total == 0);
-    cpu.setHalfCarry( (v1 & 0x0F) + (v2 & 0x0F) > 0x0F);
+    cpu.setHalfCarry((v1 & 0x0F) + (v2 & 0x0F) > 0x0F);
     cpu.setCarry(total > 0xFF); // If result is greater than 255
 
     return total;
@@ -438,7 +437,6 @@ fn addAB(cpu: *c.CPU) void {
     var total: u8 = add_and_set_flags(cpu, v1, v2);
 
     cpu.af.setHi(total);
-
 }
 
 // LOADS
@@ -501,7 +499,6 @@ fn ldHlE(cpu: *c.CPU) void {
     cpu.memory.write(cpu.hl.hilo(), cpu.de.lo());
 }
 
-
 // LD (FF00+u8),A
 // Load A into [0xff00 + N]
 fn ldAintoN(cpu: *c.CPU) void {
@@ -559,7 +556,7 @@ fn jrNzi8(cpu: *c.CPU) void {
     if (!cpu.zero()) {
         var result = @intCast(i16, cpu.pc);
         result +%= offset;
-        cpu.pc = @intCast(u16,  result);
+        cpu.pc = @intCast(u16, result);
     }
 }
 
@@ -640,24 +637,31 @@ fn callu16(cpu: *c.CPU) void {
     cpu.pc = address;
 }
 
-// ROTATE
-// Rotate bits
-fn rotate(cpu: *c.CPU, value: u8) u8 {
-    var carry: u8 = value >> 7;
-    var r: u8 = (value << 1) & 0xFF | carry;
+// Rotate value left through carry
+// https://en.wikipedia.org/wiki/Circular_shift
+fn rotateLeft(cpu: *c.CPU, value: u8) u8 {
+    var new_carry: u8 = value << 7;
+    var old_carry: u8 = cpu.bc.lo();
+    if (old_carry > 1) {
+        old_carry = 1;
+    } else {
+        old_carry = 0;
+    }
 
-    cpu.setZero(r == 0);
+    var rot: u8 = (value << 1) & 0xFF | old_carry;
+
     cpu.setNegative(false);
     cpu.setHalfCarry(false);
-    cpu.setCarry(carry == 1);
+    cpu.setZero(rot == 0);
+    cpu.setCarry(new_carry == 1);
 
-    return r;
+    return rot;
 }
 
 // RL C
 // Rotate C to the left
 fn rlC(cpu: *c.CPU) void {
-    var r: u8 = rotate(cpu, cpu.bc.lo());
+    var r: u8 = rotateLeft(cpu, cpu.bc.lo());
     cpu.bc.setLo(r);
 }
 
@@ -666,16 +670,15 @@ fn rlC(cpu: *c.CPU) void {
 fn rla(cpu: *c.CPU) void {
     var value = cpu.af.hi();
 
-    var new_carry: u8 = 0;
+    var carry: u8 = 0;
     if (cpu.carry()) {
-        new_carry = 1;
+        carry = 1;
     }
 
-    cpu.af.setHi( (value << 1) + new_carry );
+    cpu.af.setHi((value << 1) | carry);
 
     cpu.setCarry(value > 0x7F);
     cpu.setZero(false);
     cpu.setNegative(false);
     cpu.setHalfCarry(false);
 }
-
