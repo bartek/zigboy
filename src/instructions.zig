@@ -68,7 +68,7 @@ pub fn operation(cpu: *c.CPU, opcode: u16) Opcode {
         },
         0x17 => {
             op = .{
-                .label = "RLA",
+                .label = "RL A",
                 .value = opcode,
                 .length = 1,
                 .cycles = 4,
@@ -637,48 +637,31 @@ fn callu16(cpu: *c.CPU) void {
     cpu.pc = address;
 }
 
-// Rotate value left through carry
-// https://en.wikipedia.org/wiki/Circular_shift
-fn rotateLeft(cpu: *c.CPU, value: u8) u8 {
-    var new_carry: u8 = value << 7;
-    var old_carry: u8 = cpu.bc.lo();
-    if (old_carry > 1) {
-        old_carry = 1;
-    } else {
-        old_carry = 0;
-    }
+// Rotate is a helper function to rotate an u8 to the left through carry and
+// update CPU flags
+fn rotate(cpu: *c.CPU, value: u8) u8 {
+    var oldcarry: u8 = @boolToInt(cpu.carry());
+    cpu.setCarry(value & 0x80 != 0);
 
-    var rot: u8 = (value << 1) & 0xFF | old_carry;
+    var rot: u8 = (value << 1) | oldcarry;
 
+    cpu.setZero(rot == 0);
     cpu.setNegative(false);
     cpu.setHalfCarry(false);
-    cpu.setZero(rot == 0);
-    cpu.setCarry(new_carry == 1);
 
     return rot;
 }
 
 // RL C
-// Rotate C to the left
+// Rotate C to the left through carry
 fn rlC(cpu: *c.CPU) void {
-    var r: u8 = rotateLeft(cpu, cpu.bc.lo());
-    cpu.bc.setLo(r);
+    var rot: u8 = rotate(cpu, cpu.bc.lo());
+    cpu.bc.setLo(rot);
 }
 
-// RLA
+// RL A
 // Rotate register A left through carry
 fn rla(cpu: *c.CPU) void {
-    var value = cpu.af.hi();
-
-    var carry: u8 = 0;
-    if (cpu.carry()) {
-        carry = 1;
-    }
-
-    cpu.af.setHi((value << 1) | carry);
-
-    cpu.setCarry(value > 0x7F);
-    cpu.setZero(false);
-    cpu.setNegative(false);
-    cpu.setHalfCarry(false);
+    var rot: u8 = rotate(cpu, cpu.af.hi());
+    cpu.af.setHi(rot);
 }

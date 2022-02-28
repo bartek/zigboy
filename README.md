@@ -23,6 +23,7 @@ Everything
 * [Game Boy CPU Manual](http://marc.rawer.de/Gameboy/Docs/GBCPUman.pdf)
 * [Game Boy Bootstrap ROM](https://gbdev.gg8.se/wiki/articles/Gameboy_Bootstrap_ROM)
 * [opscode table](https://izik1.github.io/gbops/)
+   * [opcode summary](https://www.devrs.com/gb/files/opcodes.html)
 * [CPU opcode Reference](https://rgbds.gbdev.io/docs/v0.5.1/gbz80.7#POP_r16)
 * [Gameboy logs, to help verify run](https://github.com/wheremyfoodat/Gameboy-logs)
 
