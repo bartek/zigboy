@@ -10,9 +10,11 @@ const warn = std.log.warn;
 
 const stdin = std.io.getStdIn().reader();
 
-const c = @import("./cpu.zig");
-const gameboy = @import("./gameboy.zig");
+const CPU = @import("./cpu.zig").CPU;
+const Memory = @import("./memory.zig").Memory;
+const PPU = @import("./ppu.zig").PPU;
 const State = @import("./state.zig").State;
+const gameboy = @import("./gameboy.zig");
 
 const scale = 2;
 const width = 160;
@@ -35,7 +37,11 @@ pub fn main() anyerror!void {
         }
     }
 
-    var cpu = try c.CPU.init(allocator);
+    // Prepare memory
+    var memory = try Memory.init(allocator);
+
+    // Load CPU
+    var cpu = try CPU.init(&memory);
 
     // Atomics
     var done = Atomic(bool).init(false);
@@ -48,6 +54,9 @@ pub fn main() anyerror!void {
 
     try cpu.memory.loadRom(buffer);
 
+    // Load PPU
+    var ppu = try PPU.init(allocator, &memory);
+
     // Initialize log file
     var log_file = try cwd.createFile("./debug/log.txt", .{});
     defer log_file.close();
@@ -56,7 +65,7 @@ pub fn main() anyerror!void {
     var state = try State.init(allocator, &cpu, &log_file, debug);
 
     // Create a separate thread for the emulator to run
-    const thread_gb = try std.Thread.spawn(.{}, gameboy.runThread, .{ &done, &cpu, &state });
+    const thread_gb = try std.Thread.spawn(.{}, gameboy.runThread, .{ &done, &cpu, &ppu, &state });
     defer thread_gb.join();
 
     // Initialize SDL

@@ -38,11 +38,9 @@ pub const Memory = struct {
     }
 
     pub fn write(self: *Memory, address: u16, value: u8) void {
-
-        switch(address) {
+        switch (address) {
             // Register used to unmap bootrom. Not used by regular games
             0xff50 => {
-                print("FIXME: NO MORE BOOTROM!", .{});
                 if (value == 1) {
                     self.boot_rom_enabled = false;
                 }

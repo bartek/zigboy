@@ -4,7 +4,7 @@ const std = @import("std");
 
 const instructions = @import("./instructions.zig");
 const Opcode = instructions.Opcode;
-const memory = @import("./memory.zig");
+const Memory = @import("./memory.zig").Memory;
 const flipBit = @import("./functions.zig").flipBit;
 
 // register is a "virtual" 16-bit register which joins two 8-bit registers
@@ -61,11 +61,11 @@ pub const CPU = struct {
     // Stack Pointer
     sp: u16,
 
-    memory: memory.Memory,
+    memory: *Memory,
 
-    pub fn init(allocator: Allocator) !CPU {
+    pub fn init(memory: *Memory) !CPU {
         return CPU{
-            .memory = try memory.Memory.init(allocator),
+            .memory = memory,
             .af = register.init(0x00),
             .bc = register.init(0x00),
             .de = register.init(0x00),
