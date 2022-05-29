@@ -29,7 +29,7 @@ fn run(cpu: *CPU, ppu: *PPU, state: *State) void {
     }
 }
 
-pub fn runThread(done: *Atomic(bool), cpu: *CPU, ppu: *PPU, state: *State) void {
+pub fn run_thread(done: *Atomic(bool), cpu: *CPU, ppu: *PPU, state: *State) void {
     while (!done.load(.Unordered)) {
         run(cpu, ppu, state);
     }

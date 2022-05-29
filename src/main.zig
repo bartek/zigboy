@@ -11,10 +11,12 @@ const warn = std.log.warn;
 const stdin = std.io.getStdIn().reader();
 
 const CPU = @import("./cpu.zig").CPU;
+const Fetcher = @import("./fetcher.zig").Fetcher;
 const Memory = @import("./memory.zig").Memory;
 const PPU = @import("./ppu.zig").PPU;
 const State = @import("./state.zig").State;
 const gameboy = @import("./gameboy.zig");
+const ppuConsts = @import("./ppu.zig");
 
 const scale = 2;
 const width = 160;
@@ -37,8 +39,15 @@ pub fn main() anyerror!void {
         }
     }
 
+    // Load PPU
+    var ppu = try PPU.init(allocator);
+
     // Prepare memory
-    var memory = try Memory.init(allocator);
+    var memory = try Memory.init(allocator, &ppu);
+
+    // Prepare fetcher
+    var fetcher = try Fetcher.init(&memory);
+    ppu.assign_fetcher(fetcher);
 
     // Load CPU
     var cpu = try CPU.init(&memory);
@@ -54,9 +63,6 @@ pub fn main() anyerror!void {
 
     try cpu.memory.loadRom(buffer);
 
-    // Load PPU
-    var ppu = try PPU.init(allocator, &memory);
-
     // Initialize log file
     var log_file = try cwd.createFile("./debug/log.txt", .{});
     defer log_file.close();
@@ -65,7 +71,7 @@ pub fn main() anyerror!void {
     var state = try State.init(allocator, &cpu, &log_file, debug);
 
     // Create a separate thread for the emulator to run
-    const thread_gb = try std.Thread.spawn(.{}, gameboy.runThread, .{ &done, &cpu, &ppu, &state });
+    const thread_gb = try std.Thread.spawn(.{}, gameboy.run_thread, .{ &done, &cpu, &ppu, &state });
     defer thread_gb.join();
 
     // Initialize SDL
@@ -103,6 +109,8 @@ pub fn main() anyerror!void {
             }
         }
 
+        // Fetch the buffer containing the pixels from the emulator
+        _ = SDL.SDL_UpdateTexture(texture, null, ppu.get_buffer().ptr, 160 * 4);
         _ = SDL.SDL_RenderCopy(renderer, texture, null, null);
         SDL.SDL_RenderPresent(renderer);
     }
