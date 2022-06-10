@@ -138,7 +138,6 @@ pub const PPU = struct {
                     // Initialize pixel transfer state
                     self.x = 0;
                     var tile_line = self.ly % 8;
-                    //print("Tile line {d}, {d}\n", .{ tile_line, self.ly });
                     var tilemap_row_addr = 0x9800 + (@as(u16, self.ly / 8) * 32);
 
                     self.fetcher.start(tilemap_row_addr, tile_line);
@@ -161,7 +160,7 @@ pub const PPU = struct {
                     @panic("unexpected fifo pop error");
                 };
 
-                print("Pixel Color {d}\n", .{pixel_color});
+                //print("Pixel Color {d}\n", .{pixel_color});
                 var color: u8 = 0x00000000;
 
                 switch (pixel_color) {
