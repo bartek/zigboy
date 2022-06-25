@@ -112,10 +112,10 @@ pub const Fetcher = struct {
         while (pos <= 7) {
             if (bit_plane == 0) {
                 // Least significant bit, replace the previous value.
-                tile_data[pos] = (data >> @intCast(u3, pos)) & 1;
+                tile_data[pos] = (data >> @truncate(u3, pos)) & 1;
             } else {
                 // Most significant bit, update the previous value.
-                tile_data[pos] |= (data >> @intCast(u3, pos)) << 1;
+                tile_data[pos] |= (data >> @truncate(u3, pos)) << 1;
             }
             pos += 1;
         }

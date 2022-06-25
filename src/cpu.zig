@@ -50,6 +50,8 @@ pub const register = struct {
 // However, the Game Boy can combine two registers in order to read and write
 // 16-bit values. The valid combinations then are AF, BC, DE, and HL.
 pub const CPU = struct {
+    const Self = @This();
+
     af: register,
     bc: register,
     de: register,
@@ -63,8 +65,8 @@ pub const CPU = struct {
 
     memory: *Memory,
 
-    pub fn init(memory: *Memory) !CPU {
-        return CPU{
+    pub fn init(memory: *Memory) !Self {
+        return Self{
             .memory = memory,
             .af = register.init(0x00),
             .bc = register.init(0x00),
@@ -75,12 +77,12 @@ pub const CPU = struct {
         };
     }
 
-    pub fn deinit(self: *CPU) void {
+    pub fn deinit(self: *Self) void {
         self.memory.deinit();
     }
 
     // tick ticks the CPU
-    pub fn tick(self: *CPU) Opcode {
+    pub fn tick(self: *Self) Opcode {
         var opcode = self.popPC();
         var instruction = instructions.operation(self, opcode);
         self.execute(instruction);
@@ -88,14 +90,14 @@ pub const CPU = struct {
     }
 
     // popPC reads a single byte from memory and increments PC
-    pub fn popPC(self: *CPU) u8 {
+    pub fn popPC(self: *Self) u8 {
         var opcode: u8 = self.memory.read(self.pc);
         self.pc +%= 1;
         return opcode;
     }
 
     // popPC16 reads two bytes from memory and increments PC twice
-    pub fn popPC16(self: *CPU) u16 {
+    pub fn popPC16(self: *Self) u16 {
         var b1: u16 = self.popPC();
         var b2: u16 = self.popPC();
         return b1 | (b2 << 8);
@@ -103,14 +105,14 @@ pub const CPU = struct {
 
     // pushStack pushes two bytes onto the stack and decrements stack pointer
     // twice
-    pub fn pushStack(self: *CPU, value: u16) void {
+    pub fn pushStack(self: *Self, value: u16) void {
         self.memory.write(self.sp - 1, @intCast(u8, (value & 0xff00) >> 8));
         self.memory.write(self.sp - 2, @intCast(u8, (value & 0xff)));
         self.sp -= 2;
     }
 
     // popStack pops the next 16 bit value off the stack and increments SP
-    pub fn popStack(self: *CPU) u16 {
+    pub fn popStack(self: *Self) u16 {
         var b1: u16 = self.memory.read(self.sp);
         var b2: u16 = self.memory.read(self.sp + 1);
         self.sp += 2;
@@ -120,7 +122,7 @@ pub const CPU = struct {
 
     // execute accepts an Opcode struct and executes the packed instruction
     // https://izik1.github.io/gbops/index.html
-    pub fn execute(self: *CPU, opcode: instructions.Opcode) void {
+    pub fn execute(self: *Self, opcode: instructions.Opcode) void {
         for (opcode.steps) |step| {
             step(self);
         }
@@ -138,7 +140,7 @@ pub const CPU = struct {
 
     // The F register is a special register because it contains the values of 4
     // flags which allow the CPU to track particular states:
-    pub fn setFlag(self: *CPU, comptime bit: u8, on: bool) void {
+    pub fn setFlag(self: *Self, comptime bit: u8, on: bool) void {
         if (on) {
             self.af.setLo(bitSet(self.af.lo(), bit));
         } else {
@@ -147,32 +149,32 @@ pub const CPU = struct {
     }
 
     // Zero Flag. Set when the result of a mathemetical instruction is zero
-    pub fn zero(self: *CPU) bool {
+    pub fn zero(self: *Self) bool {
         return self.af.hilo() >> 7 & 1 == 1;
     }
 
     // Carry Flag. Used by conditional jumps and instructions such as ADC, SBC, RL, RLA, etc.
-    pub fn carry(self: *CPU) bool {
+    pub fn carry(self: *Self) bool {
         return self.af.hilo() >> 4 & 1 == 1;
     }
 
     // setZ sets the zero flag
-    pub fn setZero(self: *CPU, on: bool) void {
+    pub fn setZero(self: *Self, on: bool) void {
         self.setFlag(7, on);
     }
 
     // setN sets the negative flag
-    pub fn setNegative(self: *CPU, on: bool) void {
+    pub fn setNegative(self: *Self, on: bool) void {
         self.setFlag(6, on);
     }
 
     // setH sets the half carry flag
-    pub fn setHalfCarry(self: *CPU, on: bool) void {
+    pub fn setHalfCarry(self: *Self, on: bool) void {
         self.setFlag(5, on);
     }
 
     // setC sets the carry flag
-    pub fn setCarry(self: *CPU, on: bool) void {
+    pub fn setCarry(self: *Self, on: bool) void {
         self.setFlag(4, on);
     }
 };

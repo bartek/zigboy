@@ -23,6 +23,9 @@ fn run(cpu: *CPU, ppu: *PPU, state: *State) void {
 
         var instruction = cpu.tick();
 
+        //print("Instruction: {s}\n", .{instruction.label});
+        //std.time.sleep(500 * std.time.ns_per_ms);
+
         ppu.tick();
 
         state.append_instruction(instruction.label);

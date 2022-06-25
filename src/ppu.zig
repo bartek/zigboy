@@ -3,7 +3,10 @@ const ArrayList = std.ArrayList;
 const std = @import("std");
 const print = @import("std").debug.print;
 
+const bits = @import("./bits.zig");
+
 const Fetcher = @import("./fetcher.zig").Fetcher;
+const Screen = @import("./screen.zig").Screen;
 
 // ppu_state contains possible PPU states
 const ppu_state = enum(u8) {
@@ -22,7 +25,6 @@ const palette = [4][3]u8{
 
 const width = 160;
 const height = 144;
-pub const framebuf_pitch = width * @sizeOf(u32);
 
 //                                 PPU States and Transitions
 //
@@ -58,39 +60,29 @@ pub const PPU = struct {
     // ticks is the clock ticks counter for the current line
     ticks: usize,
 
-    // buffer contains the pixels to display on screen
-    // 160x144 pixels stored using 4 bytes per pixel (as per RGBA32) gives us
-    // the exact size we need for the buffer.
-    buffer: [width * height * 4]u8 = undefined,
+    // scan_line_counter is the scan line counter
+    // It is reset to 456 whenever the LCD is disabled
+    scan_line_counter: usize,
+
+    // screen is the screen we write pixels to.
+    screen: *Screen,
 
     // x is the number of pixels already output on the current scanline
     x: u8,
-
-    // offset
-    offset: usize = 0,
 
     highest_color: u8 = 0,
 
     fetcher: Fetcher = undefined,
 
-    pub fn init(allocator: Allocator) !PPU {
-        const bufs = try allocator.alloc(u8, (framebuf_pitch * height) * 2);
-        std.mem.set(u8, bufs, 0);
-
+    pub fn init(screen: *Screen) !PPU {
         return PPU{
             .ly = 0,
             .ticks = 0,
+            .scan_line_counter = 0,
             .state = ppu_state.oam_scan,
+            .screen = screen,
             .x = 0,
         };
-    }
-
-    pub fn assign_fetcher(self: *PPU, fetcher: Fetcher) void {
-        self.fetcher = fetcher;
-    }
-
-    pub fn get_buffer(self: *PPU) []u8 {
-        return &self.buffer;
     }
 
     // read provides a public function for memory to read from the PPU
@@ -125,8 +117,40 @@ pub const PPU = struct {
         }
     }
 
+    // Check the LCD Control Register ( LCDC : $FF40 )
+    // When this register is Bit 7, the LCD display is enabled.
+    fn is_lcd_enabled(self: *PPU) bool {
+        return bits.is_set(self.LCDC, 7);
+    }
+
+    // Check and set the LCD status
+    // The LCD is controlled by the programmer, not the cpu. Thus, it is reset here.
+    // FIXME: PPU needs to be aware of memory.
+    fn set_lcd_status(self: *PPU) void {
+        if (!self.is_lcd_enabled()) {
+            // LCD is off. FIXME: Do the reset of the PPU here as well
+            // clear screen
+            // reset scanline
+            // reset bits, etc. to review
+            self.scan_line_counter = 456;
+
+            // Reset the LCD
+            var status: u8 = 0;
+            status = bits.clear(self.LCDC, 0);
+            status = bits.clear(self.LCDC, 1);
+        }
+    }
+
+    // tick updates the graphic state
     pub fn tick(self: *PPU) void {
-        // Screen assumed on, count ticks.
+        self.set_lcd_status();
+
+        // FIXME: How do we enable the LCD? Seems to come from the bootrom,
+        // somehow. Figure out when address 0xf44 is written to
+        //if (!self.is_lcd_enabled()) {
+        //    return;
+        //}
+
         self.ticks += 1;
 
         switch (self.state) {
@@ -134,6 +158,7 @@ pub const PPU = struct {
             // 0xFE00 to 0xFE9F to mix sprite pixels in the current line later.
             // This always takes 40 clock ticks.
             ppu_state.oam_scan => {
+                //print("ppu_state: oam_scan", .{});
                 if (self.ticks == 40) {
                     // Initialize pixel transfer state
                     self.x = 0;
@@ -146,6 +171,7 @@ pub const PPU = struct {
                 }
             },
             ppu_state.pixel_transfer => {
+                //print("ppu_state: pixel_transfer", .{});
                 // Fetch pixel data into our pixel FIFO
                 self.fetcher.tick();
 
@@ -160,10 +186,10 @@ pub const PPU = struct {
                     @panic("unexpected fifo pop error");
                 };
 
-                //print("Pixel Color {d}\n", .{pixel_color});
-                var color: u8 = 0x00000000;
+                var palette_color = (self.BGP >> @truncate(u3, (@intCast(usize, pixel_color) * 2))) & 3;
 
-                switch (pixel_color) {
+                var color: u8 = 0x00000000;
+                switch (palette_color) {
                     0...50 => {
                         color = 0;
                     },
@@ -181,29 +207,25 @@ pub const PPU = struct {
                     },
                 }
 
-                self.buffer[0 + self.offset] = color;
-                self.buffer[1 + self.offset] = color;
-                self.buffer[2 + self.offset] = color;
-                self.buffer[3 + self.offset] = color;
-                self.offset += 4;
+                self.screen.write(color);
 
                 // Check if the scanline is complete.
                 self.x += 1;
                 if (self.x == width) {
                     // Blank slate
-                    // Screen.HBlank
+                    self.screen.hblank();
                     self.state = ppu_state.hblank;
                 }
             },
             ppu_state.hblank => {
+                //print("hblank", .{});
                 // TODO: wait, then go back to sprite search for next line, or
                 // vblank
                 if (self.ticks == 456) {
                     self.ticks = 0;
                     self.ly += 1;
                     if (self.ly == height) {
-                        // Call Screen.VBlank here
-                        self.offset = 0;
+                        self.screen.vblank();
                         self.state = ppu_state.vblank;
                     } else {
                         self.state = ppu_state.oam_scan;
@@ -211,6 +233,7 @@ pub const PPU = struct {
                 }
             },
             ppu_state.vblank => {
+                //print("vblank", .{});
                 if (self.ticks == 456) {
                     self.ticks = 0;
                     self.ly += 1;

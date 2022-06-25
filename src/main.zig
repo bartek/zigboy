@@ -14,13 +14,9 @@ const CPU = @import("./cpu.zig").CPU;
 const Fetcher = @import("./fetcher.zig").Fetcher;
 const Memory = @import("./memory.zig").Memory;
 const PPU = @import("./ppu.zig").PPU;
+const Screen = @import("./screen.zig").Screen;
 const State = @import("./state.zig").State;
 const gameboy = @import("./gameboy.zig");
-const ppuConsts = @import("./ppu.zig");
-
-const scale = 2;
-const width = 160;
-const height = 144;
 
 pub fn main() anyerror!void {
     const allocator = std.heap.page_allocator;
@@ -39,15 +35,19 @@ pub fn main() anyerror!void {
         }
     }
 
+    // Load screen (SDL)
+    var screen = try Screen.init();
+    defer screen.deinit();
+
     // Load PPU
-    var ppu = try PPU.init(allocator);
+    var ppu = try PPU.init(&screen);
 
     // Prepare memory
     var memory = try Memory.init(allocator, &ppu);
 
     // Prepare fetcher
     var fetcher = try Fetcher.init(&memory);
-    ppu.assign_fetcher(fetcher);
+    ppu.fetcher = fetcher;
 
     // Load CPU
     var cpu = try CPU.init(&memory);
@@ -55,8 +55,8 @@ pub fn main() anyerror!void {
     // Atomics
     var done = Atomic(bool).init(false);
 
-    // Load Tetris into memory
-    const buffer = cwd.readFileAlloc(allocator, "./roms/tetris.gb", 32768) catch |err| {
+    // Load rom into memory
+    const buffer = cwd.readFileAlloc(allocator, "./roms/dmg-rom.bin", 32768) catch |err| {
         warn("unable to open file: {s}\n", .{@errorName(err)});
         return err;
     };
@@ -74,30 +74,6 @@ pub fn main() anyerror!void {
     const thread_gb = try std.Thread.spawn(.{}, gameboy.run_thread, .{ &done, &cpu, &ppu, &state });
     defer thread_gb.join();
 
-    // Initialize SDL
-    const status = SDL.SDL_Init(SDL.SDL_INIT_VIDEO | SDL.SDL_INIT_EVENTS | SDL.SDL_INIT_AUDIO | SDL.SDL_INIT_GAMECONTROLLER);
-    if (status < 0) sdlPanic();
-    defer SDL.SDL_Quit();
-
-    var title_buf: [0x20]u8 = [_]u8{0x00} ** 0x20;
-    const title = try std.fmt.bufPrint(&title_buf, "zigboy", .{});
-
-    var window = SDL.SDL_CreateWindow(
-        title.ptr,
-        SDL.SDL_WINDOWPOS_CENTERED,
-        SDL.SDL_WINDOWPOS_CENTERED,
-        width * scale,
-        height * scale,
-        SDL.SDL_WINDOW_SHOWN,
-    ) orelse sdlPanic();
-    defer SDL.SDL_DestroyWindow(window);
-
-    var renderer = SDL.SDL_CreateRenderer(window, -1, SDL.SDL_RENDERER_ACCELERATED) orelse sdlPanic();
-    defer SDL.SDL_DestroyRenderer(renderer);
-
-    const texture = SDL.SDL_CreateTexture(renderer, SDL.SDL_PIXELFORMAT_BGR555, SDL.SDL_TEXTUREACCESS_STREAMING, 240, 160) orelse sdlPanic();
-    defer SDL.SDL_DestroyTexture(texture);
-
     var i: usize = 0;
     game_loop: while (true) : (i += 1) {
         var event: SDL.SDL_Event = undefined;
@@ -108,11 +84,6 @@ pub fn main() anyerror!void {
                 else => {},
             }
         }
-
-        // Fetch the buffer containing the pixels from the emulator
-        _ = SDL.SDL_UpdateTexture(texture, null, ppu.get_buffer().ptr, 160 * 4);
-        _ = SDL.SDL_RenderCopy(renderer, texture, null, null);
-        SDL.SDL_RenderPresent(renderer);
     }
 
     done.store(true, .Unordered);
@@ -120,9 +91,4 @@ pub fn main() anyerror!void {
 
 fn quickSleep() void {
     std.time.sleep(500 * std.time.ns_per_ms);
-}
-
-fn sdlPanic() noreturn {
-    const str = @as(?[*:0]const u8, SDL.SDL_GetError()) orelse "unknown sdl error";
-    @panic(std.mem.sliceTo(str, 0));
 }
