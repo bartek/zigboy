@@ -4,7 +4,7 @@ const print = std.debug.print;
 const c = @import("./cpu.zig");
 
 // Step is single step within an Opcode
-pub const Step = fn (cpu: *c.CPU) void;
+pub const Step = *const fn (cpu: *c.CPU) void;
 
 // Opcode is an instruction for the CPU
 pub const Opcode = struct {

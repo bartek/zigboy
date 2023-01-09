@@ -10,6 +10,16 @@ Zig! Apart from minor dabbling with C++ in college, Zig is my introduction to a
 lower level, "systems" language. A desire to get more comfortable with this
 space!
 
+## Run
+
+Ensure SDL libraries are installed. For MacOS:
+
+    brew install sdl2
+
+Then:
+
+    zig build run
+
 ## TODO
 
 Everything

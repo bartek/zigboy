@@ -88,7 +88,7 @@ pub const Fetcher = struct {
                     var i: usize = 7;
                     while (true) : (i -= 1) {
                         self.fifo.push(self.tile_data[i]) catch |err| {
-                            print("FIFO overflow\n {s}", .{err});
+                            print("FIFO overflow\n {!}", .{err});
                         };
                         if (i == 0) break;
                     }

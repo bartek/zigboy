@@ -21,19 +21,7 @@ const gameboy = @import("./gameboy.zig");
 pub fn main() anyerror!void {
     const allocator = std.heap.page_allocator;
 
-    var debug: bool = false;
-
-    // Identify args
-    var args = std.process.args();
-    while (args.next(allocator)) |error_or_arg| {
-        const arg = error_or_arg catch |err| {
-            warn("Error parsing arguments: {s}", .{err});
-            return err;
-        };
-        if (eql(u8, arg, "-d")) {
-            debug = true;
-        }
-    }
+    var debug: bool = true;
 
     // Load screen (SDL)
     var screen = try Screen.init();
@@ -57,7 +45,7 @@ pub fn main() anyerror!void {
 
     // Load rom into memory
     const buffer = cwd.readFileAlloc(allocator, "./roms/dmg-rom.bin", 32768) catch |err| {
-        warn("unable to open file: {s}\n", .{@errorName(err)});
+        //warn("unable to open file: {s}\n", .{@errorName(err)});
         return err;
     };
 

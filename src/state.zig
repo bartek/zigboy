@@ -66,7 +66,7 @@ pub const State = struct {
             "SP: {X:0>4} " ++
             "PC: 00:{X:0>4} " ++
             "({X:0>2} {X:0>2} {X:0>2} {X:0>2})\n", .{ self.cpu.af.hi(), self.cpu.af.lo(), self.cpu.bc.hi(), self.cpu.bc.lo(), self.cpu.de.hi(), self.cpu.de.lo(), self.cpu.hl.hi(), self.cpu.hl.lo(), self.cpu.sp, self.cpu.pc, mem, mem1, mem2, mem3 }) catch |err| {
-            print("{s}", .{err});
+            print("{!}", .{err});
             return;
         };
 

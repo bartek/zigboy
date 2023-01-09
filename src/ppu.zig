@@ -182,7 +182,7 @@ pub const PPU = struct {
 
                 // Put a pixel from the FIFO on screen if we have any.
                 var pixel_color = self.fetcher.fifo.pop() catch |err| {
-                    print("PPU: Error while popping pixel from FIFO: {s}\n", .{err});
+                    print("PPU: Error while popping pixel from FIFO: {!}\n", .{err});
                     @panic("unexpected fifo pop error");
                 };
 
