@@ -66,6 +66,17 @@ pub fn operation(cpu: *c.CPU, opcode: u16) Opcode {
                 },
             };
         },
+        0x12 => {
+            op = .{
+                .label = "LD (DE),A",
+                .value = opcode,
+                .length = 1,
+                .cycles = 8,
+                .steps = &[_]Step{
+                    ldDea,
+                },
+            };
+        },
         0x17 => {
             op = .{
                 .label = "RL A",
@@ -88,6 +99,17 @@ pub fn operation(cpu: *c.CPU, opcode: u16) Opcode {
                 },
             };
         },
+        0x1c => {
+            op = .{
+                .label = "INC E",
+                .value = opcode,
+                .length = 1,
+                .cycles = 4,
+                .steps = &[_]Step{
+                    incE,
+                },
+            };
+        },
         0x20 => {
             op = .{
                 .label = "JR NZ,i8",
@@ -96,6 +118,28 @@ pub fn operation(cpu: *c.CPU, opcode: u16) Opcode {
                 .cycles = 12, // FIXME: with/without branch timing to review
                 .steps = &[_]Step{
                     jrNzi8,
+                },
+            };
+        },
+        0x21 => {
+            op = .{
+                .label = "LD HL,u16",
+                .value = opcode,
+                .length = 3,
+                .cycles = 12,
+                .steps = &[_]Step{
+                    ldHlu16,
+                },
+            };
+        },
+        0x2a => {
+            op = .{
+                .label = "LDI A,(HL)",
+                .value = opcode,
+                .length = 1,
+                .cycles = 8,
+                .steps = &[_]Step{
+                    ldAMHl,
                 },
             };
         },
@@ -118,6 +162,17 @@ pub fn operation(cpu: *c.CPU, opcode: u16) Opcode {
                 .cycles = 8,
                 .steps = &[_]Step{
                     ldAu8,
+                },
+            };
+        },
+        0x47 => {
+            op = .{
+                .label = "LD B,A",
+                .value = opcode,
+                .length = 1,
+                .cycles = 4,
+                .steps = &[_]Step{
+                    ldBA,
                 },
             };
         },
@@ -195,17 +250,6 @@ pub fn operation(cpu: *c.CPU, opcode: u16) Opcode {
                 .cycles = 124,
                 .steps = &[_]Step{
                     callu16,
-                },
-            };
-        },
-        0x21 => {
-            op = .{
-                .label = "LD HL,u16",
-                .value = opcode,
-                .length = 3,
-                .cycles = 12,
-                .steps = &[_]Step{
-                    ldHlu16,
                 },
             };
         },
@@ -448,6 +492,25 @@ fn ldAMDe(cpu: *c.CPU) void {
     cpu.af.setHi(v);
 }
 
+// LD (DE),A
+fn ldDea(cpu: *c.CPU) void {
+    var v: u8 = cpu.af.hi();
+    cpu.memory.write(cpu.de.hilo(), v);
+}
+
+// LDI A,(HL)
+// Read at memory location (HL) and load into A
+fn ldAMHl(cpu: *c.CPU) void {
+    var v: u8 = cpu.memory.read(cpu.hl.hilo());
+    cpu.af.setHi(v);
+    cpu.hl.set(cpu.hl.hilo() + 1);
+}
+
+// LD B,A
+fn ldBA(cpu: *c.CPU) void {
+    cpu.bc.setHi(cpu.af.hi());
+}
+
 // LD C,A
 fn ldCA(cpu: *c.CPU) void {
     cpu.bc.setLo(cpu.af.hi());
@@ -480,7 +543,8 @@ fn ldSpu16(cpu: *c.CPU) void {
 
 // LD HL,u16
 fn ldHlu16(cpu: *c.CPU) void {
-    cpu.hl.set(cpu.popPC16());
+    var v = cpu.popPC16();
+    cpu.hl.set(v);
 }
 
 fn ldDeu16(cpu: *c.CPU) void {
@@ -594,6 +658,16 @@ fn incBc(cpu: *c.CPU) void {
     print("FIXME: FLAGS", .{});
     var v: u16 = cpu.bc.hilo();
     cpu.bc.set(v + 1);
+}
+
+fn incE(cpu: *c.CPU) void {
+    var v: u8 = cpu.de.lo();
+    var total: u8 = v + 1;
+    cpu.de.setLo(total);
+
+    cpu.setZero(total == 0);
+    cpu.setNegative(false);
+    cpu.setHalfCarry(halfCarryAdd(v, 1));
 }
 
 fn incC(cpu: *c.CPU) void {

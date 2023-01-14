@@ -102,6 +102,7 @@ pub const PPU = struct {
             },
         }
     }
+
     // write provides a public function for memory to write to the PPU
     pub fn write(self: *PPU, address: u16, value: u8) void {
         switch (address) {

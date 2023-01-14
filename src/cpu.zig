@@ -6,28 +6,52 @@ const instructions = @import("./instructions.zig");
 const Opcode = instructions.Opcode;
 const Memory = @import("./memory.zig").Memory;
 const flipBit = @import("./functions.zig").flipBit;
+const bits = @import("./bits.zig");
+
+fn pause() ![]const u8 {
+    const stdin = std.io.getStdIn().reader();
+
+    var buf: [10]u8 = undefined;
+
+    const line = try stdin.readUntilDelimiterOrEof(buf[0..], '\n');
+    return line orelse "";
+}
 
 // register is a "virtual" 16-bit register which joins two 8-bit registers
 // together. If the register was AF, A would be the Hi byte and F the Lo.
 pub const register = struct {
     value: u16,
 
-    pub fn init(value: u8) register {
+    // mask is a possible value in the register, only used for AF register
+    // where the lower bits of F cannot be set.
+    mask: u16,
+
+    pub fn init(value: u16) register {
         return register{
             .value = value,
+            .mask = 0x00,
         };
+    }
+
+    fn updateMask(self: *register) void {
+        if (self.mask != 0) {
+            self.value &= self.mask;
+        }
     }
 
     pub fn set(self: *register, value: u16) void {
         self.value = value;
+        self.updateMask();
     }
 
     pub fn setLo(self: *register, value: u8) void {
-        self.value = @intCast(u16, value) | (@intCast(u16, self.value) & 0xFF00);
+        self.value = @as(u16, value) | (@as(u16, self.value) & 0xFF00);
+        self.updateMask();
     }
 
     pub fn setHi(self: *register, value: u8) void {
-        self.value = @intCast(u16, value) << 8 | (@intCast(u16, self.value) & 0xFF);
+        self.value = @as(u16, value) << 8 | (@as(u16, self.value) & 0xFF);
+        self.updateMask();
     }
 
     pub fn hilo(self: *register) u16 {
@@ -51,6 +75,7 @@ pub const register = struct {
 // 16-bit values. The valid combinations then are AF, BC, DE, and HL.
 pub const CPU = struct {
     const Self = @This();
+    const debug = true;
 
     af: register,
     bc: register,
@@ -66,15 +91,24 @@ pub const CPU = struct {
     memory: *Memory,
 
     pub fn init(memory: *Memory) !Self {
-        return Self{
+        var af = register.init(0x01b0);
+        af.mask = 0xFFF0;
+
+        // Initial values defined by https://gbdev.io/pandocs/Power_Up_Sequence.html#cpu-registers
+        var c = Self{
             .memory = memory,
-            .af = register.init(0x00),
-            .bc = register.init(0x00),
-            .de = register.init(0x00),
-            .hl = register.init(0x00),
-            .pc = 0x00,
-            .sp = 0x00,
+            .af = af,
+            .bc = register.init(0x0013),
+            .de = register.init(0x00D8),
+            .hl = register.init(0x014d),
+            .pc = 0x0100,
+            .sp = 0xfffe,
         };
+
+        c.setZero(true);
+        c.setNegative(false);
+
+        return c;
     }
 
     pub fn deinit(self: *Self) void {
@@ -83,8 +117,41 @@ pub const CPU = struct {
 
     // tick ticks the CPU
     pub fn tick(self: *Self) Opcode {
+        if (debug) {
+            var mem: u8 = self.memory.read(self.pc);
+            var mem1: u8 = self.memory.read(self.pc + 1);
+            var mem2: u8 = self.memory.read(self.pc + 2);
+            var mem3: u8 = self.memory.read(self.pc + 3);
+            std.debug.print("A: {X:0>2} " ++
+                "F: {X:0>2} " ++
+                "B: {X:0>2} " ++
+                "C: {X:0>2} " ++
+                "D: {X:0>2} " ++
+                "E: {X:0>2} " ++
+                "H: {X:0>2} " ++
+                "L: {X:0>2} " ++
+                "SP: {X:0>4} " ++
+                "PC: 00:{X:0>4} " ++
+                "({X:0>2} {X:0>2} {X:0>2} {X:0>2})", .{ self.af.hi(), self.af.lo(), self.bc.hi(), self.bc.lo(), self.de.hi(), self.de.lo(), self.hl.hi(), self.hl.lo(), self.sp, self.pc, mem, mem1, mem2, mem3 });
+        }
+
+        //var line = pause() catch |err| {
+        //    std.debug.print("Error: {}\n", .{err});
+        //    return Opcode{
+        //        .label = "NOP",
+        //        .value = 0x0,
+        //        .length = 1,
+        //        .cycles = 4,
+        //        .steps = undefined,
+        //    };
+        //};
+        //std.debug.print("{s}", .{line});
+
         var opcode = self.popPC();
         var instruction = instructions.operation(self, opcode);
+        std.debug.print("\n", .{});
+        //std.debug.print("{X:0>2} {s}\n", .{ opcode, instruction.label });
+
         self.execute(instruction);
         return instruction;
     }
@@ -128,23 +195,13 @@ pub const CPU = struct {
         }
     }
 
-    // bitSet sets a bit for value.
-    fn bitSet(value: u8, comptime bit: u8) u8 {
-        return value | (@as(u8, 1) << bit);
-    }
-
-    // bitReset resets a bit for value.
-    fn bitReset(value: u8, comptime bit: u8) u8 {
-        return value & ~(@as(u8, 1) << bit);
-    }
-
     // The F register is a special register because it contains the values of 4
     // flags which allow the CPU to track particular states:
     pub fn setFlag(self: *Self, comptime bit: u8, on: bool) void {
         if (on) {
-            self.af.setLo(bitSet(self.af.lo(), bit));
+            self.af.setLo(bits.set(self.af.lo(), bit));
         } else {
-            self.af.setLo(bitReset(self.af.lo(), bit));
+            self.af.setLo(bits.clear(self.af.lo(), bit));
         }
     }
 

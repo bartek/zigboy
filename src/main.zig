@@ -44,8 +44,8 @@ pub fn main() anyerror!void {
     var done = Atomic(bool).init(false);
 
     // Load rom into memory
-    const buffer = cwd.readFileAlloc(allocator, "./roms/dmg-rom.bin", 32768) catch |err| {
-        //warn("unable to open file: {s}\n", .{@errorName(err)});
+    const buffer = cwd.readFileAlloc(allocator, "./roms/06-ld r,r.gb", 65536) catch |err| {
+        warn("unable to open file: {s}\n", .{@errorName(err)});
         return err;
     };
 
