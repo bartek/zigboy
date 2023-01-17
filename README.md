@@ -2,6 +2,8 @@
 
 :construction: zigboy is a work-in-progress Game Boy emulator written in Zig :construction:
 
+For following along, read [the journal](./JOURNAL.md)
+
 ## Why?
 
 I had fun building my [CHIP-8 emulator](https://github.com/bartek/zip-8) using

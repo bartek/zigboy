@@ -101,6 +101,7 @@ pub const Memory = struct {
     }
 
     pub fn write(self: *Self, address: u16, value: u8) void {
+        std.debug.print("write: {x} {x}\n", .{ address, value });
         switch (address) {
             0xff01 => { // Serial port
                 print("{c}", .{value});
