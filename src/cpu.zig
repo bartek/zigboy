@@ -75,7 +75,7 @@ pub const register = struct {
 // 16-bit values. The valid combinations then are AF, BC, DE, and HL.
 pub const CPU = struct {
     const Self = @This();
-    const debug = true;
+    const debug = false;
 
     af: register,
     bc: register,
@@ -90,6 +90,8 @@ pub const CPU = struct {
 
     memory: *Memory,
 
+    interruptsEnabled: bool,
+
     pub fn init(memory: *Memory) !Self {
         var af = register.init(0x01b0);
         af.mask = 0xFFF0;
@@ -103,6 +105,7 @@ pub const CPU = struct {
             .hl = register.init(0x014d),
             .pc = 0x0100,
             .sp = 0xfffe,
+            .interruptsEnabled = false,
         };
 
         c.setZero(true);
@@ -149,8 +152,10 @@ pub const CPU = struct {
 
         var opcode = self.popPC();
         var instruction = instructions.operation(self, opcode);
-        std.debug.print("\n", .{});
-        //std.debug.print("{X:0>2} {s}\n", .{ opcode, instruction.label });
+        if (debug) {
+            std.debug.print("{X:0>2} {s}", .{ opcode, instruction.label });
+            std.debug.print("\n", .{});
+        }
 
         self.execute(instruction);
         return instruction;
@@ -182,7 +187,7 @@ pub const CPU = struct {
     pub fn popStack(self: *Self) u16 {
         var b1: u16 = self.memory.read(self.sp);
         var b2: u16 = self.memory.read(self.sp + 1);
-        self.sp += 2;
+        self.sp +%= 2;
 
         return b1 | (b2 << 8);
     }

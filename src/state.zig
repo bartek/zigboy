@@ -50,36 +50,37 @@ pub const State = struct {
     // Matches format at https://github.com/wheremyfoodat/Gameboy-logs
     // to allow for programmatic comparison.
     pub fn append(self: *State) !void {
-        var mem: u8 = self.cpu.memory.read(self.cpu.pc);
-        var mem1: u8 = self.cpu.memory.read(self.cpu.pc + 1);
-        var mem2: u8 = self.cpu.memory.read(self.cpu.pc + 2);
-        var mem3: u8 = self.cpu.memory.read(self.cpu.pc + 3);
+        if (self.debug) {}
+        //var mem: u8 = self.cpu.memory.read(self.cpu.pc);
+        //var mem1: u8 = self.cpu.memory.read(self.cpu.pc + 1);
+        //var mem2: u8 = self.cpu.memory.read(self.cpu.pc + 2);
+        //var mem3: u8 = self.cpu.memory.read(self.cpu.pc + 3);
 
-        const buf = allocPrint(std.heap.page_allocator, "A: {X:0>2} " ++
-            "F: {X:0>2} " ++
-            "B: {X:0>2} " ++
-            "C: {X:0>2} " ++
-            "D: {X:0>2} " ++
-            "E: {X:0>2} " ++
-            "H: {X:0>2} " ++
-            "L: {X:0>2} " ++
-            "SP: {X:0>4} " ++
-            "PC: 00:{X:0>4} " ++
-            "({X:0>2} {X:0>2} {X:0>2} {X:0>2})\n", .{ self.cpu.af.hi(), self.cpu.af.lo(), self.cpu.bc.hi(), self.cpu.bc.lo(), self.cpu.de.hi(), self.cpu.de.lo(), self.cpu.hl.hi(), self.cpu.hl.lo(), self.cpu.sp, self.cpu.pc, mem, mem1, mem2, mem3 }) catch |err| {
-            print("{!}", .{err});
-            return;
-        };
+        //const buf = allocPrint(std.heap.page_allocator, "A: {X:0>2} " ++
+        //    "F: {X:0>2} " ++
+        //    "B: {X:0>2} " ++
+        //    "C: {X:0>2} " ++
+        //    "D: {X:0>2} " ++
+        //    "E: {X:0>2} " ++
+        //    "H: {X:0>2} " ++
+        //    "L: {X:0>2} " ++
+        //    "SP: {X:0>4} " ++
+        //    "PC: 00:{X:0>4} " ++
+        //    "({X:0>2} {X:0>2} {X:0>2} {X:0>2})\n", .{ self.cpu.af.hi(), self.cpu.af.lo(), self.cpu.bc.hi(), self.cpu.bc.lo(), self.cpu.de.hi(), self.cpu.de.lo(), self.cpu.hl.hi(), self.cpu.hl.lo(), self.cpu.sp, self.cpu.pc, mem, mem1, mem2, mem3 }) catch |err| {
+        //    print("{!}", .{err});
+        //    return;
+        //};
 
-        try self.container.append(buf);
+        //try self.container.append(buf);
 
-        // If the container is over capacity, reduce it
-        if (self.container.items.len > Capacity) {
-            _ = self.container.orderedRemove(0);
-        }
+        //// If the container is over capacity, reduce it
+        //if (self.container.items.len > Capacity) {
+        //    _ = self.container.orderedRemove(0);
+        //}
 
-        if (self.debug) {
-            _ = try self.log_file.writeAll(buf);
-        }
+        //if (self.debug) {
+        //    _ = try self.log_file.writeAll(buf);
+        //}
     }
 
     pub fn append_instruction(self: *State, instr: []const u8) void {
