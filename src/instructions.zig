@@ -3,7 +3,7 @@ const print = std.debug.print;
 
 const c = @import("./cpu.zig");
 
-// Step is single step within an Opcode
+// Step is the actual execution of the Opcode
 pub const Step = *const fn (cpu: *c.CPU) void;
 
 // Opcode is an instruction for the CPU
@@ -13,25 +13,16 @@ pub const Opcode = struct {
     length: u8,
     cycles: u8, // clock cycles
 
-    // Zig note: The usage of .steps in initializing the Opcode looks like so:
-    // .steps = &[_]Step{
-    //     ldSpu16,
-    // }
-    // This is implicitly a constant, and thus, we have to give the compiler a
-    // hint that this is expected, hence the `const` in this definition.
-    // Alternatively, the steps could be explicitly defined as a non-constant
-    // (var steps = [_]Step{...}, but it feels syntactically more enjoyable to
-    // do it this way.
-    steps: []const Step,
+    step: Step,
 };
 
 pub fn operation(cpu: *c.CPU, opcode: u16) Opcode {
     var op: Opcode = .{
         .label = undefined,
-        .value = opcode, // This is repeated. Not sure why Zig doesn't allow it to be omitted in the subsequent usage.
+        .value = undefined,
         .length = undefined,
         .cycles = undefined,
-        .steps = undefined,
+        .step = undefined,
     };
 
     switch (opcode) {
@@ -41,7 +32,7 @@ pub fn operation(cpu: *c.CPU, opcode: u16) Opcode {
                 .value = opcode,
                 .length = 1,
                 .cycles = 4,
-                .steps = &[_]Step{},
+                .step = noop,
             };
         },
         0x1 => {
@@ -50,9 +41,7 @@ pub fn operation(cpu: *c.CPU, opcode: u16) Opcode {
                 .value = opcode,
                 .length = 3,
                 .cycles = 12,
-                .steps = &[_]Step{
-                    ldBCu16,
-                },
+                .step = ldBCu16,
             };
         },
         0x6 => {
@@ -61,9 +50,7 @@ pub fn operation(cpu: *c.CPU, opcode: u16) Opcode {
                 .value = opcode,
                 .length = 2,
                 .cycles = 8,
-                .steps = &[_]Step{
-                    ldBu8,
-                },
+                .step = ldBu8,
             };
         },
         0x69 => {
@@ -72,9 +59,7 @@ pub fn operation(cpu: *c.CPU, opcode: u16) Opcode {
                 .value = opcode,
                 .length = 1,
                 .cycles = 4,
-                .steps = &[_]Step{
-                    ldLC,
-                },
+                .step = ldLC,
             };
         },
         0x11 => {
@@ -83,9 +68,7 @@ pub fn operation(cpu: *c.CPU, opcode: u16) Opcode {
                 .value = opcode,
                 .length = 3,
                 .cycles = 12,
-                .steps = &[_]Step{
-                    ldDeu16,
-                },
+                .step = ldDeu16,
             };
         },
         0x12 => {
@@ -94,9 +77,7 @@ pub fn operation(cpu: *c.CPU, opcode: u16) Opcode {
                 .value = opcode,
                 .length = 1,
                 .cycles = 8,
-                .steps = &[_]Step{
-                    ldDea,
-                },
+                .step = ldDea,
             };
         },
         0x14 => {
@@ -105,9 +86,7 @@ pub fn operation(cpu: *c.CPU, opcode: u16) Opcode {
                 .value = opcode,
                 .length = 1,
                 .cycles = 4,
-                .steps = &[_]Step{
-                    incD,
-                },
+                .step = incD,
             };
         },
         0x17 => {
@@ -116,9 +95,7 @@ pub fn operation(cpu: *c.CPU, opcode: u16) Opcode {
                 .value = opcode,
                 .length = 1,
                 .cycles = 4,
-                .steps = &[_]Step{
-                    rla,
-                },
+                .step = rla,
             };
         },
         0x18 => {
@@ -127,9 +104,7 @@ pub fn operation(cpu: *c.CPU, opcode: u16) Opcode {
                 .value = opcode,
                 .length = 1,
                 .cycles = 4,
-                .steps = &[_]Step{
-                    jri8,
-                },
+                .step = jri8,
             };
         },
         0x1a => {
@@ -138,9 +113,7 @@ pub fn operation(cpu: *c.CPU, opcode: u16) Opcode {
                 .value = opcode,
                 .length = 1,
                 .cycles = 8,
-                .steps = &[_]Step{
-                    ldAMDe,
-                },
+                .step = ldAMDe,
             };
         },
         0x1c => {
@@ -149,9 +122,7 @@ pub fn operation(cpu: *c.CPU, opcode: u16) Opcode {
                 .value = opcode,
                 .length = 1,
                 .cycles = 4,
-                .steps = &[_]Step{
-                    incE,
-                },
+                .step = incE,
             };
         },
         0x20 => {
@@ -160,9 +131,7 @@ pub fn operation(cpu: *c.CPU, opcode: u16) Opcode {
                 .value = opcode,
                 .length = 2,
                 .cycles = 12, // FIXME: with/without branch timing to review
-                .steps = &[_]Step{
-                    jrNZi8,
-                },
+                .step = jrNZi8,
             };
         },
         0x21 => {
@@ -171,9 +140,7 @@ pub fn operation(cpu: *c.CPU, opcode: u16) Opcode {
                 .value = opcode,
                 .length = 3,
                 .cycles = 12,
-                .steps = &[_]Step{
-                    ldHlu16,
-                },
+                .step = ldHlu16,
             };
         },
         0x23 => {
@@ -182,9 +149,7 @@ pub fn operation(cpu: *c.CPU, opcode: u16) Opcode {
                 .value = opcode,
                 .length = 1,
                 .cycles = 8,
-                .steps = &[_]Step{
-                    incHL,
-                },
+                .step = incHL,
             };
         },
         0x24 => {
@@ -193,9 +158,7 @@ pub fn operation(cpu: *c.CPU, opcode: u16) Opcode {
                 .value = opcode,
                 .length = 1,
                 .cycles = 4,
-                .steps = &[_]Step{
-                    incH,
-                },
+                .step = incH,
             };
         },
         0x28 => {
@@ -204,9 +167,7 @@ pub fn operation(cpu: *c.CPU, opcode: u16) Opcode {
                 .value = opcode,
                 .length = 2,
                 .cycles = 12, // FIXME: with/without branch timing to review
-                .steps = &[_]Step{
-                    jrZi8,
-                },
+                .step = jrZi8,
             };
         },
         0x2a => {
@@ -215,9 +176,7 @@ pub fn operation(cpu: *c.CPU, opcode: u16) Opcode {
                 .value = opcode,
                 .length = 1,
                 .cycles = 8,
-                .steps = &[_]Step{
-                    ldAMHl,
-                },
+                .step = ldAMHl,
             };
         },
         0x2c => {
@@ -226,9 +185,7 @@ pub fn operation(cpu: *c.CPU, opcode: u16) Opcode {
                 .value = opcode,
                 .length = 1,
                 .cycles = 4,
-                .steps = &[_]Step{
-                    incL,
-                },
+                .step = incL,
             };
         },
         0x31 => {
@@ -237,9 +194,7 @@ pub fn operation(cpu: *c.CPU, opcode: u16) Opcode {
                 .value = opcode,
                 .length = 3,
                 .cycles = 12,
-                .steps = &[_]Step{
-                    ldSpu16,
-                },
+                .step = ldSpu16,
             };
         },
         0x30 => {
@@ -248,9 +203,7 @@ pub fn operation(cpu: *c.CPU, opcode: u16) Opcode {
                 .value = opcode,
                 .length = 2,
                 .cycles = 8,
-                .steps = &[_]Step{
-                    jrNCi8,
-                },
+                .step = jrNCi8,
             };
         },
         0x3e => {
@@ -259,9 +212,7 @@ pub fn operation(cpu: *c.CPU, opcode: u16) Opcode {
                 .value = opcode,
                 .length = 2,
                 .cycles = 8,
-                .steps = &[_]Step{
-                    ldAu8,
-                },
+                .step = ldAu8,
             };
         },
         0x47 => {
@@ -270,9 +221,7 @@ pub fn operation(cpu: *c.CPU, opcode: u16) Opcode {
                 .value = opcode,
                 .length = 1,
                 .cycles = 4,
-                .steps = &[_]Step{
-                    ldBA,
-                },
+                .step = ldBA,
             };
         },
         0x4f => {
@@ -281,9 +230,7 @@ pub fn operation(cpu: *c.CPU, opcode: u16) Opcode {
                 .value = opcode,
                 .length = 1,
                 .cycles = 3,
-                .steps = &[_]Step{
-                    ldCA,
-                },
+                .step = ldCA,
             };
         },
         0x5 => {
@@ -292,9 +239,7 @@ pub fn operation(cpu: *c.CPU, opcode: u16) Opcode {
                 .value = opcode,
                 .length = 1,
                 .cycles = 4,
-                .steps = &[_]Step{
-                    ldDB,
-                },
+                .step = ldDB,
             };
         },
         0x77 => {
@@ -303,9 +248,7 @@ pub fn operation(cpu: *c.CPU, opcode: u16) Opcode {
                 .value = opcode,
                 .length = 1,
                 .cycles = 8,
-                .steps = &[_]Step{
-                    ldHlA,
-                },
+                .step = ldHlA,
             };
         },
         0x78 => {
@@ -314,9 +257,7 @@ pub fn operation(cpu: *c.CPU, opcode: u16) Opcode {
                 .value = opcode,
                 .length = 1,
                 .cycles = 4,
-                .steps = &[_]Step{
-                    ldAB,
-                },
+                .step = ldAB,
             };
         },
         0x7c => {
@@ -325,9 +266,7 @@ pub fn operation(cpu: *c.CPU, opcode: u16) Opcode {
                 .value = opcode,
                 .length = 1,
                 .cycles = 8,
-                .steps = &[_]Step{
-                    ldAH,
-                },
+                .step = ldAH,
             };
         },
         0x7d => {
@@ -336,9 +275,7 @@ pub fn operation(cpu: *c.CPU, opcode: u16) Opcode {
                 .value = opcode,
                 .length = 1,
                 .cycles = 8,
-                .steps = &[_]Step{
-                    ldAL,
-                },
+                .step = ldAL,
             };
         },
         0xc1 => {
@@ -347,9 +284,7 @@ pub fn operation(cpu: *c.CPU, opcode: u16) Opcode {
                 .value = opcode,
                 .length = 1,
                 .cycles = 12,
-                .steps = &[_]Step{
-                    popBC,
-                },
+                .step = popBC,
             };
         },
         0xc3 => {
@@ -358,9 +293,7 @@ pub fn operation(cpu: *c.CPU, opcode: u16) Opcode {
                 .value = opcode,
                 .length = 3,
                 .cycles = 16,
-                .steps = &[_]Step{
-                    jpu16,
-                },
+                .step = jpu16,
             };
         },
         0xc4 => {
@@ -369,9 +302,7 @@ pub fn operation(cpu: *c.CPU, opcode: u16) Opcode {
                 .value = opcode,
                 .length = 3,
                 .cycles = 24,
-                .steps = &[_]Step{
-                    callNZu16,
-                },
+                .step = callNZu16,
             };
         },
         0xc5 => {
@@ -380,9 +311,7 @@ pub fn operation(cpu: *c.CPU, opcode: u16) Opcode {
                 .value = opcode,
                 .length = 1,
                 .cycles = 16,
-                .steps = &[_]Step{
-                    pushBC,
-                },
+                .step = pushBC,
             };
         },
         0xcd => {
@@ -391,9 +320,7 @@ pub fn operation(cpu: *c.CPU, opcode: u16) Opcode {
                 .value = opcode,
                 .length = 3,
                 .cycles = 124,
-                .steps = &[_]Step{
-                    callu16,
-                },
+                .step = callu16,
             };
         },
         0x03 => {
@@ -402,9 +329,7 @@ pub fn operation(cpu: *c.CPU, opcode: u16) Opcode {
                 .value = opcode,
                 .length = 1,
                 .cycles = 8,
-                .steps = &[_]Step{
-                    incBc,
-                },
+                .step = incBc,
             };
         },
         0x32 => {
@@ -413,9 +338,7 @@ pub fn operation(cpu: *c.CPU, opcode: u16) Opcode {
                 .value = opcode,
                 .length = 1,
                 .cycles = 8,
-                .steps = &[_]Step{
-                    ldHlADec,
-                },
+                .step = ldHlADec,
             };
         },
         0xaa => {
@@ -424,9 +347,7 @@ pub fn operation(cpu: *c.CPU, opcode: u16) Opcode {
                 .value = opcode,
                 .length = 1,
                 .cycles = 4,
-                .steps = &[_]Step{
-                    xorAD,
-                },
+                .step = xorAD,
             };
         },
         0xaf => {
@@ -435,9 +356,7 @@ pub fn operation(cpu: *c.CPU, opcode: u16) Opcode {
                 .value = opcode,
                 .length = 1,
                 .cycles = 4,
-                .steps = &[_]Step{
-                    xorAA,
-                },
+                .step = xorAA,
             };
         },
         0xb1 => {
@@ -446,9 +365,7 @@ pub fn operation(cpu: *c.CPU, opcode: u16) Opcode {
                 .value = opcode,
                 .length = 1,
                 .cycles = 8,
-                .steps = &[_]Step{
-                    decDE,
-                },
+                .step = decDE,
             };
         },
 
@@ -458,9 +375,7 @@ pub fn operation(cpu: *c.CPU, opcode: u16) Opcode {
                 .value = opcode,
                 .length = 1,
                 .cycles = 8,
-                .steps = &[_]Step{
-                    ldHlE,
-                },
+                .step = ldHlE,
             };
         },
         0x8 => {
@@ -469,9 +384,7 @@ pub fn operation(cpu: *c.CPU, opcode: u16) Opcode {
                 .value = opcode,
                 .length = 1,
                 .cycles = 4,
-                .steps = &[_]Step{
-                    addAB,
-                },
+                .step = addAB,
             };
         },
 
@@ -481,9 +394,7 @@ pub fn operation(cpu: *c.CPU, opcode: u16) Opcode {
                 .value = opcode,
                 .length = 1,
                 .cycles = 4,
-                .steps = &[_]Step{
-                    addAE,
-                },
+                .step = addAE,
             };
         },
         0x89 => {
@@ -492,9 +403,7 @@ pub fn operation(cpu: *c.CPU, opcode: u16) Opcode {
                 .value = opcode,
                 .length = 1,
                 .cycles = 4,
-                .steps = &[_]Step{
-                    addAC,
-                },
+                .step = addAC,
             };
         },
         0x0c => {
@@ -503,9 +412,7 @@ pub fn operation(cpu: *c.CPU, opcode: u16) Opcode {
                 .value = opcode,
                 .length = 1,
                 .cycles = 4,
-                .steps = &[_]Step{
-                    incC,
-                },
+                .step = incC,
             };
         },
         0xc9 => {
@@ -514,9 +421,7 @@ pub fn operation(cpu: *c.CPU, opcode: u16) Opcode {
                 .value = opcode,
                 .length = 1,
                 .cycles = 8,
-                .steps = &[_]Step{
-                    ret,
-                },
+                .step = ret,
             };
         },
         0xd => {
@@ -525,9 +430,7 @@ pub fn operation(cpu: *c.CPU, opcode: u16) Opcode {
                 .value = opcode,
                 .length = 1,
                 .cycles = 8,
-                .steps = &[_]Step{
-                    retNc,
-                },
+                .step = retNc,
             };
         },
         0x0e => {
@@ -536,9 +439,7 @@ pub fn operation(cpu: *c.CPU, opcode: u16) Opcode {
                 .value = opcode,
                 .length = 2,
                 .cycles = 8,
-                .steps = &[_]Step{
-                    ldCu8,
-                },
+                .step = ldCu8,
             };
         },
         0xe0 => {
@@ -547,9 +448,7 @@ pub fn operation(cpu: *c.CPU, opcode: u16) Opcode {
                 .value = opcode,
                 .length = 2,
                 .cycles = 12,
-                .steps = &[_]Step{
-                    ldAintoN,
-                },
+                .step = ldAintoN,
             };
         },
         0xe1 => {
@@ -558,9 +457,7 @@ pub fn operation(cpu: *c.CPU, opcode: u16) Opcode {
                 .value = opcode,
                 .length = 1,
                 .cycles = 12,
-                .steps = &[_]Step{
-                    popHL,
-                },
+                .step = popHL,
             };
         },
         0xe2 => {
@@ -569,9 +466,7 @@ pub fn operation(cpu: *c.CPU, opcode: u16) Opcode {
                 .value = opcode,
                 .length = 2,
                 .cycles = 12,
-                .steps = &[_]Step{
-                    ldAintoC,
-                },
+                .step = ldAintoC,
             };
         },
         0xe5 => {
@@ -580,9 +475,7 @@ pub fn operation(cpu: *c.CPU, opcode: u16) Opcode {
                 .value = opcode,
                 .length = 1,
                 .cycles = 16,
-                .steps = &[_]Step{
-                    pushHL,
-                },
+                .step = pushHL,
             };
         },
         0xe6 => {
@@ -591,9 +484,7 @@ pub fn operation(cpu: *c.CPU, opcode: u16) Opcode {
                 .value = opcode,
                 .length = 1,
                 .cycles = 16,
-                .steps = &[_]Step{
-                    andAu8,
-                },
+                .step = andAu8,
             };
         },
         0xea => {
@@ -602,9 +493,7 @@ pub fn operation(cpu: *c.CPU, opcode: u16) Opcode {
                 .value = opcode,
                 .length = 2,
                 .cycles = 12,
-                .steps = &[_]Step{
-                    ldNNintoA,
-                },
+                .step = ldNNintoA,
             };
         },
         0xf1 => {
@@ -613,9 +502,7 @@ pub fn operation(cpu: *c.CPU, opcode: u16) Opcode {
                 .value = opcode,
                 .length = 1,
                 .cycles = 12,
-                .steps = &[_]Step{
-                    popAF,
-                },
+                .step = popAF,
             };
         },
         0xf3 => {
@@ -624,9 +511,7 @@ pub fn operation(cpu: *c.CPU, opcode: u16) Opcode {
                 .value = opcode,
                 .length = 2,
                 .cycles = 12,
-                .steps = &[_]Step{
-                    di,
-                },
+                .step = di,
             };
         },
         0xf5 => {
@@ -635,9 +520,7 @@ pub fn operation(cpu: *c.CPU, opcode: u16) Opcode {
                 .value = opcode,
                 .length = 1,
                 .cycles = 16,
-                .steps = &[_]Step{
-                    pushAF,
-                },
+                .step = pushAF,
             };
         },
         0xfa => {
@@ -646,9 +529,7 @@ pub fn operation(cpu: *c.CPU, opcode: u16) Opcode {
                 .value = opcode,
                 .length = 2,
                 .cycles = 12,
-                .steps = &[_]Step{
-                    ldAintoNN,
-                },
+                .step = ldAintoNN,
             };
         },
 
@@ -673,7 +554,7 @@ fn extendedOperation(opcode: u16) Opcode {
         .value = opcode, // This is repeated. Not sure why Zig doesn't allow it to be omitted in the subsequent usage.
         .length = undefined,
         .cycles = undefined,
-        .steps = undefined,
+        .step = undefined,
     };
 
     switch (opcode) {
@@ -683,9 +564,7 @@ fn extendedOperation(opcode: u16) Opcode {
                 .value = opcode,
                 .length = 2,
                 .cycles = 8,
-                .steps = &[_]Step{
-                    rlC,
-                },
+                .step = rlC,
             };
         },
         0x7c => {
@@ -694,9 +573,7 @@ fn extendedOperation(opcode: u16) Opcode {
                 .value = opcode,
                 .length = 2,
                 .cycles = 8,
-                .steps = &[_]Step{
-                    bit7h,
-                },
+                .step = bit7h,
             };
         },
         else => {
@@ -705,6 +582,10 @@ fn extendedOperation(opcode: u16) Opcode {
     }
 
     return op;
+}
+
+fn noop(cpu: *c.CPU) void {
+    _ = cpu;
 }
 
 // ADDS

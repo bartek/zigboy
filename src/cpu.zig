@@ -195,9 +195,7 @@ pub const CPU = struct {
     // execute accepts an Opcode struct and executes the packed instruction
     // https://izik1.github.io/gbops/index.html
     pub fn execute(self: *Self, opcode: instructions.Opcode) void {
-        for (opcode.steps) |step| {
-            step(self);
-        }
+        opcode.step(self);
     }
 
     // The F register is a special register because it contains the values of 4
