@@ -997,7 +997,7 @@ fn ret(cpu: *c.CPU) void {
 // If not carry, pop return address from stack and jump to it.
 fn retNc(cpu: *c.CPU) void {
     if (!cpu.carry()) {
-        cpu.pc = cpu.popStack();
+        ret(cpu);
     }
 }
 

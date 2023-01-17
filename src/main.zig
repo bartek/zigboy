@@ -15,13 +15,10 @@ const Fetcher = @import("./fetcher.zig").Fetcher;
 const Memory = @import("./memory.zig").Memory;
 const PPU = @import("./ppu.zig").PPU;
 const Screen = @import("./screen.zig").Screen;
-const State = @import("./state.zig").State;
 const gameboy = @import("./gameboy.zig");
 
 pub fn main() anyerror!void {
     const allocator = std.heap.page_allocator;
-
-    var debug: bool = true;
 
     // Load screen (SDL)
     var screen = try Screen.init();
@@ -55,11 +52,8 @@ pub fn main() anyerror!void {
     var log_file = try cwd.createFile("./debug/log.txt", .{});
     defer log_file.close();
 
-    // State is a connection between modules for debugging, useful things
-    var state = try State.init(allocator, &cpu, &log_file, debug);
-
     // Create a separate thread for the emulator to run
-    const thread_gb = try std.Thread.spawn(.{}, gameboy.run_thread, .{ &done, &cpu, &ppu, &state });
+    const thread_gb = try std.Thread.spawn(.{}, gameboy.run_thread, .{ &done, &cpu, &ppu });
     defer thread_gb.join();
 
     var i: usize = 0;
