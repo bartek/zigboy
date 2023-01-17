@@ -75,7 +75,7 @@ pub const register = struct {
 // 16-bit values. The valid combinations then are AF, BC, DE, and HL.
 pub const CPU = struct {
     const Self = @This();
-    const debug = true;
+    const debug = false;
 
     af: register,
     bc: register,
@@ -135,7 +135,7 @@ pub const CPU = struct {
                 "L: {X:0>2} " ++
                 "SP: {X:0>4} " ++
                 "PC: 00:{X:0>4} " ++
-                "({X:0>2} {X:0>2} {X:0>2} {X:0>2})", .{ self.af.hi(), self.af.lo(), self.bc.hi(), self.bc.lo(), self.de.hi(), self.de.lo(), self.hl.hi(), self.hl.lo(), self.sp, self.pc, mem, mem1, mem2, mem3 });
+                "({X:0>2} {X:0>2} {X:0>2} {X:0>2})\n", .{ self.af.hi(), self.af.lo(), self.bc.hi(), self.bc.lo(), self.de.hi(), self.de.lo(), self.hl.hi(), self.hl.lo(), self.sp, self.pc, mem, mem1, mem2, mem3 });
         }
 
         //var line = pause() catch |err| {
@@ -152,10 +152,6 @@ pub const CPU = struct {
 
         var opcode = self.popPC();
         var instruction = instructions.operation(self, opcode);
-        if (debug) {
-            std.debug.print("{X:0>2} {s}", .{ opcode, instruction.label });
-            std.debug.print("\n", .{});
-        }
 
         self.execute(instruction);
         return instruction;

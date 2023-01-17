@@ -424,13 +424,22 @@ pub fn operation(cpu: *c.CPU, opcode: u16) Opcode {
                 .step = ret,
             };
         },
-        0xd => {
+        0xd0 => {
             op = .{
                 .label = "RET NC",
                 .value = opcode,
                 .length = 1,
                 .cycles = 8,
                 .step = retNc,
+            };
+        },
+        0x0d => {
+            op = .{
+                .label = "DEC C",
+                .value = opcode,
+                .length = 1,
+                .cycles = 4,
+                .step = decC,
             };
         },
         0x0e => {
@@ -890,14 +899,14 @@ fn halfCarryAdd(v1: u8, v2: u8) bool {
 
 // INC HL
 fn incHL(cpu: *c.CPU) void {
-    var v: u16 = cpu.hl.hilo() + 1;
+    var v: u16 = cpu.hl.hilo() +% 1;
     cpu.hl.set(v);
 }
 
 // INC BC
 fn incBc(cpu: *c.CPU) void {
     var v: u16 = cpu.bc.hilo();
-    cpu.bc.set(v + 1);
+    cpu.bc.set(v +% 1);
 }
 
 fn incD(cpu: *c.CPU) void {
@@ -952,6 +961,16 @@ fn incC(cpu: *c.CPU) void {
 
 // DEC
 
+// DEC C
+fn decC(cpu: *c.CPU) void {
+    var v: u8 = cpu.bc.lo();
+    var total: u8 = v - 1;
+    cpu.bc.setLo(total);
+
+    cpu.setZero(total == 0);
+    cpu.setNegative(true);
+    cpu.setHalfCarry(v & 0x0f == 0);
+}
 // DEC DE
 fn decDE(cpu: *c.CPU) void {
     var v: u16 = cpu.de.hilo();
