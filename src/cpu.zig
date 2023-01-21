@@ -75,7 +75,7 @@ pub const register = struct {
 // 16-bit values. The valid combinations then are AF, BC, DE, and HL.
 pub const CPU = struct {
     const Self = @This();
-    const debug = false;
+    const debug = true;
 
     af: register,
     bc: register,

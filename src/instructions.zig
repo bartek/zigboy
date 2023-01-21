@@ -80,6 +80,15 @@ pub fn operation(cpu: *c.CPU, opcode: u16) Opcode {
                 .step = ldDea,
             };
         },
+        0x13 => {
+            op = .{
+                .label = "INC DE",
+                .value = opcode,
+                .length = 1,
+                .cycles = 8,
+                .step = incDE,
+            };
+        },
         0x14 => {
             op = .{
                 .label = "INC D",
@@ -141,6 +150,15 @@ pub fn operation(cpu: *c.CPU, opcode: u16) Opcode {
                 .length = 3,
                 .cycles = 12,
                 .step = ldHlu16,
+            };
+        },
+        0x22 => {
+            op = .{
+                .label = "LD (HL+),A",
+                .value = opcode,
+                .length = 1,
+                .cycles = 8,
+                .step = ldiHLA,
             };
         },
         0x23 => {
@@ -233,7 +251,7 @@ pub fn operation(cpu: *c.CPU, opcode: u16) Opcode {
                 .step = ldCA,
             };
         },
-        0x5 => {
+        0x50 => {
             op = .{
                 .label = "LD D,B",
                 .value = opcode,
@@ -314,6 +332,15 @@ pub fn operation(cpu: *c.CPU, opcode: u16) Opcode {
                 .step = pushBC,
             };
         },
+        0xc6 => {
+            op = .{
+                .label = "ADD A,u8",
+                .value = opcode,
+                .length = 2,
+                .cycles = 8,
+                .step = addAu8,
+            };
+        },
         0xcd => {
             op = .{
                 .label = "CALL u16",
@@ -330,6 +357,15 @@ pub fn operation(cpu: *c.CPU, opcode: u16) Opcode {
                 .length = 1,
                 .cycles = 8,
                 .step = incBc,
+            };
+        },
+        0x05 => {
+            op = .{
+                .label = "DEC B",
+                .value = opcode,
+                .length = 1,
+                .cycles = 8,
+                .step = decB,
             };
         },
         0x32 => {
@@ -350,6 +386,15 @@ pub fn operation(cpu: *c.CPU, opcode: u16) Opcode {
                 .step = xorAD,
             };
         },
+        0xa9 => {
+            op = .{
+                .label = "XOR A,C",
+                .value = opcode,
+                .length = 1,
+                .cycles = 4,
+                .step = xorAC,
+            };
+        },
         0xaf => {
             op = .{
                 .label = "XOR A,A",
@@ -361,11 +406,11 @@ pub fn operation(cpu: *c.CPU, opcode: u16) Opcode {
         },
         0xb1 => {
             op = .{
-                .label = "DEC DE",
+                .label = "OR A,C",
                 .value = opcode,
                 .length = 1,
-                .cycles = 8,
-                .step = decDE,
+                .cycles = 4,
+                .step = orAC,
             };
         },
 
@@ -387,7 +432,6 @@ pub fn operation(cpu: *c.CPU, opcode: u16) Opcode {
                 .step = addAB,
             };
         },
-
         0x83 => {
             op = .{
                 .label = "ADD A,E",
@@ -404,6 +448,15 @@ pub fn operation(cpu: *c.CPU, opcode: u16) Opcode {
                 .length = 1,
                 .cycles = 4,
                 .step = addAC,
+            };
+        },
+        0x90 => {
+            op = .{
+                .label = "SUB A B",
+                .value = opcode,
+                .length = 1,
+                .cycles = 4,
+                .step = subAB,
             };
         },
         0x0c => {
@@ -431,6 +484,15 @@ pub fn operation(cpu: *c.CPU, opcode: u16) Opcode {
                 .length = 1,
                 .cycles = 8,
                 .step = retNc,
+            };
+        },
+        0xd6 => {
+            op = .{
+                .label = "SUB A,u8",
+                .value = opcode,
+                .length = 2,
+                .cycles = 8,
+                .step = subAu8,
             };
         },
         0x0d => {
@@ -505,6 +567,15 @@ pub fn operation(cpu: *c.CPU, opcode: u16) Opcode {
                 .step = ldNNintoA,
             };
         },
+        0xf0 => {
+            op = .{
+                .label = "LD A,(FF00+u8)",
+                .value = opcode,
+                .length = 2,
+                .cycles = 12,
+                .step = ldAfromN,
+            };
+        },
         0xf1 => {
             op = .{
                 .label = "POP AF",
@@ -539,6 +610,15 @@ pub fn operation(cpu: *c.CPU, opcode: u16) Opcode {
                 .length = 2,
                 .cycles = 12,
                 .step = ldAintoNN,
+            };
+        },
+        0xfe => {
+            op = .{
+                .label = "CP A,u8",
+                .value = opcode,
+                .length = 2,
+                .cycles = 12,
+                .step = cpAu8,
             };
         },
 
@@ -637,7 +717,51 @@ fn addAB(cpu: *c.CPU) void {
     cpu.af.setHi(total);
 }
 
+fn addAu8(cpu: *c.CPU) void {
+    var v1: u8 = cpu.af.hi();
+    var v2: u8 = cpu.popPC();
+
+    var total: u8 = add_and_set_flags(cpu, v1, v2);
+    cpu.af.setHi(total);
+}
+
+// SUBS
+//
+// SUB A,u8
+fn subAu8(cpu: *c.CPU) void {
+    var v1: u8 = cpu.af.hi();
+    var v2: u8 = cpu.popPC();
+
+    var total: u8 = v1 -% v2;
+    cpu.af.setHi(total);
+
+    cpu.setZero(total == 0);
+    cpu.setNegative(true);
+    cpu.setHalfCarry((v1 & 0x0F) < (v2 & 0x0F));
+    cpu.setCarry(v2 > v1);
+}
+
+// SUB A,B (r8)
+fn subAB(cpu: *c.CPU) void {
+    var v1: u8 = cpu.af.hi();
+    var v2: u8 = cpu.bc.hi();
+
+    var total: u8 = v1 -% v2;
+    cpu.af.setHi(total);
+
+    cpu.setZero(total == 0);
+    cpu.setNegative(true);
+    cpu.setHalfCarry((v1 & 0x0F) < (v2 & 0x0F));
+    cpu.setCarry(v2 > v1);
+}
+
 // LOADS
+
+// LD A,(FF00+u8)
+fn ldAfromN(cpu: *c.CPU) void {
+    var v: u8 = cpu.memory.read(0xff00 + @as(u16, cpu.popPC()));
+    cpu.af.setHi(v);
+}
 
 fn ldLC(cpu: *c.CPU) void {
     var v = cpu.bc.lo();
@@ -682,7 +806,7 @@ fn ldCA(cpu: *c.CPU) void {
 
 // LD A,L
 fn ldAL(cpu: *c.CPU) void {
-    cpu.af.setHi(cpu.de.lo());
+    cpu.af.setHi(cpu.hl.lo());
 }
 // LD A,B
 fn ldAB(cpu: *c.CPU) void {
@@ -722,6 +846,13 @@ fn ldBCu16(cpu: *c.CPU) void {
 // LD SP,16
 fn ldSpu16(cpu: *c.CPU) void {
     cpu.sp = cpu.popPC16();
+}
+
+// LD (HL+),A
+fn ldiHLA(cpu: *c.CPU) void {
+    var v = cpu.hl.hilo();
+    cpu.memory.write(v, cpu.af.hi());
+    cpu.hl.set(v + 1);
 }
 
 // LD HL,u16
@@ -773,11 +904,41 @@ fn ldHlADec(cpu: *c.CPU) void {
     cpu.hl.set(cpu.hl.hilo() - 1);
 }
 
+// OR
+// OR A,C
+fn orAC(cpu: *c.CPU) void {
+    var v1: u8 = cpu.af.hi();
+    var v2: u8 = cpu.bc.lo();
+
+    var total: u8 = v1 | v2;
+
+    cpu.af.setHi(total);
+    cpu.setZero(total == 0);
+    cpu.setNegative(false);
+    cpu.setHalfCarry(false);
+    cpu.setCarry(false);
+}
+
 // XOR A,A
 // XOR A with itself (or, set it to 0)
 fn xorAA(cpu: *c.CPU) void {
     var a1: u8 = cpu.af.hi();
     var a2: u8 = cpu.af.hi();
+
+    var v: u8 = a1 ^ a2;
+    cpu.af.setHi(v);
+
+    // Set flags
+    cpu.setZero(v == 0);
+    cpu.setNegative(false);
+    cpu.setHalfCarry(false);
+    cpu.setCarry(false);
+}
+
+// XOR A,C
+fn xorAC(cpu: *c.CPU) void {
+    var a1: u8 = cpu.af.hi();
+    var a2: u8 = cpu.bc.lo();
 
     var v: u8 = a1 ^ a2;
     cpu.af.setHi(v);
@@ -891,10 +1052,6 @@ fn retNc(cpu: *c.CPU) void {
     }
 }
 
-fn halfCarryAdd(v1: u8, v2: u8) bool {
-    return (v1 & 0xf) + (v2 & 0xf) > 0xf;
-}
-
 // Increments
 
 // INC HL
@@ -907,6 +1064,12 @@ fn incHL(cpu: *c.CPU) void {
 fn incBc(cpu: *c.CPU) void {
     var v: u16 = cpu.bc.hilo();
     cpu.bc.set(v +% 1);
+}
+
+// INC DE
+fn incDE(cpu: *c.CPU) void {
+    var v: u16 = cpu.de.hilo();
+    cpu.de.set(v +% 1);
 }
 
 fn incD(cpu: *c.CPU) void {
@@ -960,6 +1123,17 @@ fn incC(cpu: *c.CPU) void {
 }
 
 // DEC
+//
+// DEC B
+fn decB(cpu: *c.CPU) void {
+    var v: u8 = cpu.bc.hi();
+    var total: u8 = v - 1;
+    cpu.bc.setHi(total);
+
+    cpu.setZero(total == 0);
+    cpu.setNegative(true);
+    cpu.setHalfCarry(v & 0x0f == 0);
+}
 
 // DEC C
 fn decC(cpu: *c.CPU) void {
@@ -1073,4 +1247,22 @@ fn rla(cpu: *c.CPU) void {
 
 fn di(cpu: *c.CPU) void {
     cpu.interruptsEnabled = false;
+}
+
+// COPY
+
+// CP A,u8
+fn cpAu8(cpu: *c.CPU) void {
+    var v1: u8 = cpu.popPC();
+    var v2: u8 = cpu.af.hi();
+    var total = v2 -% v1;
+
+    cpu.setZero(total == 0);
+    cpu.setNegative(true);
+    cpu.setHalfCarry((v1 & 0x0f) > (v2 & 0x0f));
+    cpu.setCarry(v1 > v2);
+}
+
+fn halfCarryAdd(v1: u8, v2: u8) bool {
+    return (v1 & 0xf) + (v2 & 0xf) > 0xf;
 }

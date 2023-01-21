@@ -89,7 +89,8 @@ pub const Memory = struct {
                 return self.ppu.read(address);
             },
             0xff44 => {
-                return self.ppu.read(address);
+                return 0x90;
+                //return self.ppu.read(address);
             },
             0xff47 => {
                 return self.ppu.read(address);
@@ -101,7 +102,6 @@ pub const Memory = struct {
     }
 
     pub fn write(self: *Self, address: u16, value: u8) void {
-        std.debug.print("write: {x} {x}\n", .{ address, value });
         switch (address) {
             0xff01 => { // Serial port
                 print("{c}", .{value});
