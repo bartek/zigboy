@@ -3,9 +3,8 @@ const fmt = std.fmt;
 const std = @import("std");
 
 const instructions = @import("./instructions.zig");
-const Opcode = instructions.Opcode;
+const Opcode = @import("./opcode.zig").Opcode;
 const Memory = @import("./memory.zig").Memory;
-const flipBit = @import("./functions.zig").flipBit;
 const bits = @import("./bits.zig");
 
 fn pause() ![]const u8 {
@@ -138,18 +137,6 @@ pub const CPU = struct {
                 "({X:0>2} {X:0>2} {X:0>2} {X:0>2})\n", .{ self.af.hi(), self.af.lo(), self.bc.hi(), self.bc.lo(), self.de.hi(), self.de.lo(), self.hl.hi(), self.hl.lo(), self.sp, self.pc, mem, mem1, mem2, mem3 });
         }
 
-        //var line = pause() catch |err| {
-        //    std.debug.print("Error: {}\n", .{err});
-        //    return Opcode{
-        //        .label = "NOP",
-        //        .value = 0x0,
-        //        .length = 1,
-        //        .cycles = 4,
-        //        .steps = undefined,
-        //    };
-        //};
-        //std.debug.print("{s}", .{line});
-
         var opcode = self.popPC();
         var instruction = instructions.operation(self, opcode);
 
@@ -190,7 +177,7 @@ pub const CPU = struct {
 
     // execute accepts an Opcode struct and executes the packed instruction
     // https://izik1.github.io/gbops/index.html
-    pub fn execute(self: *Self, opcode: instructions.Opcode) void {
+    pub fn execute(self: *Self, opcode: Opcode) void {
         opcode.step(self);
     }
 
