@@ -226,6 +226,7 @@ pub const PPU = struct {
                     self.ticks = 0;
                     self.ly += 1;
                     if (self.ly == height) {
+                        std.debug.print("vblank", .{});
                         self.screen.vblank();
                         self.state = ppu_state.vblank;
                     } else {

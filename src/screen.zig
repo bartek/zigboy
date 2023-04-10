@@ -12,17 +12,21 @@ const palette = [4][4]u8{
     [_]u8{ 0x34, 0x3d, 0x37, 0xff }, // Black
 };
 
+// Screen contains the video game screen and debug info.
 pub const Screen = struct {
     const Self = @This();
 
     // window is the pointer to the SDL Window
     window: *SDL.SDL_Window,
+    debugWindow: *SDL.SDL_Window,
 
     // renderer is the pointer to the SDL Renderer
     renderer: *SDL.SDL_Renderer,
+    debugRenderer: *SDL.SDL_Renderer,
 
     // texture is the pointer to the SDL Texture
     texture: *SDL.SDL_Texture,
+    debugTexture: *SDL.SDL_Texture,
 
     // buffer is the texture buffer for the current frame
     // 160x144 pixels stored using 4 bytes per pixel (as per RGBA32) gives us
@@ -40,6 +44,15 @@ pub const Screen = struct {
         var title_buf: [0x20]u8 = [_]u8{0x00} ** 0x20;
         const title = try std.fmt.bufPrint(&title_buf, "zigboy", .{});
 
+        var debugWindow = SDL.SDL_CreateWindow(
+            title.ptr,
+            SDL.SDL_WINDOWPOS_CENTERED,
+            SDL.SDL_WINDOWPOS_CENTERED,
+            width * scale,
+            height * scale,
+            SDL.SDL_WINDOW_SHOWN,
+        ) orelse sdlPanic();
+
         var window = SDL.SDL_CreateWindow(
             title.ptr,
             SDL.SDL_WINDOWPOS_CENTERED,
@@ -50,13 +63,26 @@ pub const Screen = struct {
         ) orelse sdlPanic();
 
         var renderer = SDL.SDL_CreateRenderer(window, -1, SDL.SDL_RENDERER_ACCELERATED) orelse sdlPanic();
+        var debugRenderer = SDL.SDL_CreateRenderer(window, -1, SDL.SDL_RENDERER_ACCELERATED) orelse sdlPanic();
 
-        const texture = SDL.SDL_CreateTexture(renderer, SDL.SDL_PIXELFORMAT_BGR555, SDL.SDL_TEXTUREACCESS_STREAMING, 160, 144) orelse sdlPanic();
+        const texture = SDL.SDL_CreateTexture(renderer, SDL.SDL_PIXELFORMAT_BGR555, SDL.SDL_TEXTUREACCESS_STREAMING, width, height) orelse sdlPanic();
 
+        // Text surface for fonts, which we use for displaying the debug pane.
+        var color = SDL.SDL_Color{ .r = 0xff, .g = 0xff, .b = 0xff, .a = 0xff };
+        var font = SDL.TTF_OpenFont("assets/B612Mono-Bold.ttf", 16) orelse sdlPanic();
+        var textSurface = SDL.TTF_RenderText_Solid(font, "Hello, world!", color) orelse sdlPanic();
+
+        var debugTexture = SDL.SDL_CreateTextureFromSurface(debugRenderer, textSurface) orelse sdlPanic();
+
+        //SDL.SDL_FreeSurface(debugSurface);
         return Self{
             .window = window,
             .texture = texture,
             .renderer = renderer,
+
+            .debugWindow = debugWindow,
+            .debugRenderer = debugRenderer,
+            .debugTexture = debugTexture,
         };
     }
 
@@ -79,17 +105,21 @@ pub const Screen = struct {
     // vblank is called when the PPU reaches VBlank state. At this point, the
     // SDL buffer is ready for display.
     pub fn vblank(self: *Self) void {
+        std.debug.print("vblank", .{});
         _ = SDL.SDL_UpdateTexture(self.texture, null, &self.buffer, width * 4);
         _ = SDL.SDL_RenderCopy(self.renderer, self.texture, null, null);
         self.offset = 0;
 
         SDL.SDL_RenderPresent(self.renderer);
+        SDL.SDL_RenderPresent(self.debugRenderer);
     }
 
     pub fn deinit(self: *Self) void {
         SDL.SDL_Quit();
         SDL.SDL_DestroyWindow(self.window);
+        SDL.SDL_DestroyWindow(self.debugWindow);
         SDL.SDL_DestroyRenderer(self.renderer);
+        SDL.SDL_DestroyRenderer(self.debugRenderer);
         SDL.SDL_DestroyTexture(self.texture);
     }
 };

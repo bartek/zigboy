@@ -1,3 +1,8 @@
+SDL Things:
+
+https://github.com/tiehuis/zig-gameboy/blob/master/src/window_sdl.zig
+
+
 # Day 2
 
 It's been awhile since Day 1 and I'll pretend that a year did not pass since.
