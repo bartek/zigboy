@@ -1,8 +1,10 @@
 const std = @import("std");
+const assert = std.debug.assert;
 const print = std.debug.print;
 
 const c = @import("./cpu.zig");
 const Opcode = @import("./opcode.zig").Opcode;
+const extended = @import("./instructions_cb.zig");
 
 pub fn operation(cpu: *c.CPU, opcode: u16) Opcode {
     var op: Opcode = .{
@@ -48,6 +50,15 @@ pub fn operation(cpu: *c.CPU, opcode: u16) Opcode {
                 .length = 1,
                 .cycles = 4,
                 .step = ldLC,
+            };
+        },
+        0x10 => {
+            op = .{
+                .label = "STOP",
+                .value = opcode,
+                .length = 2,
+                .cycles = 4,
+                .step = stop,
             };
         },
         0x11 => {
@@ -120,6 +131,15 @@ pub fn operation(cpu: *c.CPU, opcode: u16) Opcode {
                 .length = 1,
                 .cycles = 4,
                 .step = incE,
+            };
+        },
+        0x1f => {
+            op = .{
+                .label = "RRA",
+                .value = opcode,
+                .length = 1,
+                .cycles = 4,
+                .step = rra,
             };
         },
         0x20 => {
@@ -639,6 +659,15 @@ pub fn operation(cpu: *c.CPU, opcode: u16) Opcode {
                 .step = ldNNintoA,
             };
         },
+        0xee => {
+            op = .{
+                .label = "XOR A,u8",
+                .value = opcode,
+                .length = 2,
+                .cycles = 8,
+                .step = xorAu8,
+            };
+        },
         0xf0 => {
             op = .{
                 .label = "LD A,(FF00+u8)",
@@ -698,145 +727,10 @@ pub fn operation(cpu: *c.CPU, opcode: u16) Opcode {
         // called via the opcode 0xcb which is an extended opcode meaning
         // the next immediate byte has to be decoded and treated as the opcode
         0xcb => {
-            var next: u16 = cpu.popPC();
-            op = extendedOperation(next);
+            op = extended.Operation(cpu);
         },
         else => {
             print("not implemented 0x{x}\n", .{opcode});
-        },
-    }
-
-    return op;
-}
-
-fn extendedOperation(opcode: u16) Opcode {
-    // FIXME: Move this to a foor loop like so:
-    // https://github.com/Humpheh/goboy/blob/master/pkg/gb/instructions_cb.go
-    // This is a much simpler instruction set to build. Start with SRL
-    var op: Opcode = .{
-        .label = undefined,
-        .value = opcode, // This is repeated. Not sure why Zig doesn't allow it to be omitted in the subsequent usage.
-        .length = undefined,
-        .cycles = undefined,
-        .step = undefined,
-    };
-
-    //const get_map: [8]*const fn () u8 = [_]*const fn () u8{
-    //    struct {
-    //        fn f() u8 {
-    //            return cpu.bc.hi();
-    //        }
-    //    }.f,
-    //    struct {
-    //        fn f() u8 {
-    //            return cpu.bc.lo();
-    //        }
-    //    }.f,
-    //    struct {
-    //        fn f() u8 {
-    //            return cpu.de.hi();
-    //        }
-    //    }.f,
-    //    struct {
-    //        fn f() u8 {
-    //            return cpu.de.lo();
-    //        }
-    //    }.f,
-    //    struct {
-    //        fn f() u8 {
-    //            return cpu.hl.hi();
-    //        }
-    //    }.f,
-    //    struct {
-    //        fn f() u8 {
-    //            return cpu.hl.lo();
-    //        }
-    //    }.f,
-    //    struct {
-    //        fn f() u8 {
-    //            return cpu.memory.read(cpu.hl.hilo());
-    //        }
-    //    }.f,
-    //    struct {
-    //        fn f() u8 {
-    //            return cpu.af.hi();
-    //        }
-    //    }.f,
-    //};
-
-    //var set_map: [8]*const fn (v: u8) void = [_]*const fn (v: u8) void{
-    //    cpu.bc.setHi,
-    //    cpu.bc.setLo,
-    //    cpu.de.setHi,
-    //    cpu.de.setLo,
-    //    cpu.hl.setHi,
-    //    cpu.hl.setLo,
-    //    struct {
-    //        fn f(v: u8) void {
-    //            return cpu.memory.write(cpu.hl.hilo(), v);
-    //        }
-    //    }.f,
-    //    cpu.af.setHi,
-    //};
-
-    //var instructions: [0x100]fn () void = undefined;
-
-    //var i: usize = 0;
-    //while (i < 8) {
-    //    instructions[0x38 + i] = return struct {
-    //        fn f(y: usize) void {
-    //            print("{x}", .{get_map[i]});
-    //        }
-    //    }.f;
-    //    // setmap, getmap
-    //    //srl(i: usize) fn() void {
-    //    //    return struct {
-    //    //        fn srl() void {
-    //    //            cpu.srl(i);
-    //    //        }
-    //    //    }.srl;
-    //    //}
-    //}
-
-    switch (opcode) {
-        0x11 => {
-            op = .{
-                .label = "RL C",
-                .value = opcode,
-                .length = 2,
-                .cycles = 8,
-                .step = rlC,
-            };
-        },
-        0x7c => {
-            op = .{
-                .label = "BIT 7,H",
-                .value = opcode,
-                .length = 2,
-                .cycles = 8,
-                .step = bit7h,
-            };
-        },
-        0x19 => {
-            op = .{
-                .label = "RR C",
-                .value = opcode,
-                .length = 2,
-                .cycles = 8,
-                .step = rrC,
-            };
-        },
-        0x38 => {
-            op = .{
-                .label = "SRL B",
-                .value = opcode,
-                .length = 2,
-                .cycles = 8,
-                .step = srlB,
-            };
-        },
-        else => {
-            print("[extended] not implemented 0x{x}\n", .{opcode});
         },
     }
 
@@ -1126,6 +1020,20 @@ fn orAC(cpu: *c.CPU) void {
     cpu.setCarry(false);
 }
 
+// XOR A,u8
+fn xorAu8(cpu: *c.CPU) void {
+    var v1: u8 = cpu.af.hi();
+    var v2: u8 = cpu.popPC();
+
+    var total: u8 = v1 ^ v2;
+    cpu.af.setHi(total);
+
+    cpu.setZero(total == 0);
+    cpu.setNegative(false);
+    cpu.setHalfCarry(false);
+    cpu.setCarry(false);
+}
+
 // XOR A,A
 // XOR A with itself (or, set it to 0)
 fn xorAA(cpu: *c.CPU) void {
@@ -1135,7 +1043,6 @@ fn xorAA(cpu: *c.CPU) void {
     var v: u8 = a1 ^ a2;
     cpu.af.setHi(v);
 
-    // Set flags
     cpu.setZero(v == 0);
     cpu.setNegative(false);
     cpu.setHalfCarry(false);
@@ -1535,4 +1442,38 @@ fn rrC(cpu: *c.CPU) void {
     cpu.setNegative(false);
     cpu.setHalfCarry(false);
     cpu.setCarry(carry == 1);
+}
+
+// RRA
+// Rotate register A right through carry
+fn rra(cpu: *c.CPU) void {
+    var v: u8 = cpu.af.hi();
+    var carry: u8 = 0;
+    if (cpu.carry()) {
+        carry = 0x80;
+    }
+    var result: u8 = (v >> 1) | carry;
+    cpu.af.setHi(result);
+
+    cpu.setZero(false);
+    cpu.setNegative(false);
+    cpu.setHalfCarry(false);
+    cpu.setCarry((1 & v) == 1);
+}
+
+// STOP
+fn stop(cpu: *c.CPU) void {
+    // TODO: gbops says this has changed in understanding since Oct 30 2021
+    // Prior to October 30th, 2021, STOP was referenced as being two bytes
+    // long, however, it is one byte. There is a potentially confusing fact in
+    // that STOP skips one byte after itself. However, it doesn't care what
+    // byte comes after it.
+    //
+    // Pop the next value as the STOP instruction is two bytes long.
+    var s = cpu.popPC();
+    std.debug.print("{x}", .{s});
+
+    //// If the next instruction is not 0x00 this is likely a corrupted
+    //// instruction.
+    //assert(s == 0x00);
 }

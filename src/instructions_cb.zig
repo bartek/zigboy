@@ -5,7 +5,9 @@ const print = std.debug.print;
 const c = @import("./cpu.zig");
 const Opcode = @import("./opcode.zig").Opcode;
 
-pub fn extendedOperation(opcode: u16) Opcode {
+pub fn Operation(cpu: *c.CPU) Opcode {
+    var opcode: u16 = cpu.popPC();
+
     // FIXME: Move this to a foor loop like so:
     // https://github.com/Humpheh/goboy/blob/master/pkg/gb/instructions_cb.go
     // This is a much simpler instruction set to build. Start with SRL
@@ -16,83 +18,6 @@ pub fn extendedOperation(opcode: u16) Opcode {
         .cycles = undefined,
         .step = undefined,
     };
-
-    //const get_map: [8]*const fn () u8 = [_]*const fn () u8{
-    //    struct {
-    //        fn f() u8 {
-    //            return cpu.bc.hi();
-    //        }
-    //    }.f,
-    //    struct {
-    //        fn f() u8 {
-    //            return cpu.bc.lo();
-    //        }
-    //    }.f,
-    //    struct {
-    //        fn f() u8 {
-    //            return cpu.de.hi();
-    //        }
-    //    }.f,
-    //    struct {
-    //        fn f() u8 {
-    //            return cpu.de.lo();
-    //        }
-    //    }.f,
-    //    struct {
-    //        fn f() u8 {
-    //            return cpu.hl.hi();
-    //        }
-    //    }.f,
-    //    struct {
-    //        fn f() u8 {
-    //            return cpu.hl.lo();
-    //        }
-    //    }.f,
-    //    struct {
-    //        fn f() u8 {
-    //            return cpu.memory.read(cpu.hl.hilo());
-    //        }
-    //    }.f,
-    //    struct {
-    //        fn f() u8 {
-    //            return cpu.af.hi();
-    //        }
-    //    }.f,
-    //};
-
-    //var set_map: [8]*const fn (v: u8) void = [_]*const fn (v: u8) void{
-    //    cpu.bc.setHi,
-    //    cpu.bc.setLo,
-    //    cpu.de.setHi,
-    //    cpu.de.setLo,
-    //    cpu.hl.setHi,
-    //    cpu.hl.setLo,
-    //    struct {
-    //        fn f(v: u8) void {
-    //            return cpu.memory.write(cpu.hl.hilo(), v);
-    //        }
-    //    }.f,
-    //    cpu.af.setHi,
-    //};
-
-    //var instructions: [0x100]fn () void = undefined;
-
-    //var i: usize = 0;
-    //while (i < 8) {
-    //    instructions[0x38 + i] = return struct {
-    //        fn f(y: usize) void {
-    //            print("{x}", .{get_map[i]});
-    //        }
-    //    }.f;
-    //    // setmap, getmap
-    //    //srl(i: usize) fn() void {
-    //    //    return struct {
-    //    //        fn srl() void {
-    //    //            cpu.srl(i);
-    //    //        }
-    //    //    }.srl;
-    //    //}
-    //}
 
     switch (opcode) {
         0x11 => {
@@ -120,6 +45,15 @@ pub fn extendedOperation(opcode: u16) Opcode {
                 .length = 2,
                 .cycles = 8,
                 .step = rrC,
+            };
+        },
+        0x1a => {
+            op = .{
+                .label = "RR D",
+                .value = opcode,
+                .length = 2,
+                .cycles = 8,
+                .step = rrD,
             };
         },
         0x38 => {
@@ -807,6 +741,16 @@ fn halfCarryAdd(v1: u8, v2: u8) bool {
 }
 
 // SERIAL
+fn srl(cpu: *c.CPU, setter: fn (*c.register) u8, value: u8) void {
+    var carry = value & 1;
+    var rot = value >> 1;
+    setter(rot);
+
+    cpu.setZero(rot == 0);
+    cpu.setNegative(false);
+    cpu.setHalfCarry(false);
+    cpu.setCarry(carry == 1);
+}
 //
 // SRL B
 fn srlB(cpu: *c.CPU) void {
@@ -821,11 +765,25 @@ fn srlB(cpu: *c.CPU) void {
     cpu.setCarry(carry == 1);
 }
 
+// RR C
 fn rrC(cpu: *c.CPU) void {
     var v: u8 = cpu.de.hi();
     var carry = v & 1;
-    var rot: u8 = (v >> 1) | (@boolToInt(cpu.carry()) << 7);
+    var rot: u8 = (v >> 1) | (@intCast(u8, @boolToInt(cpu.carry())) << 7);
     cpu.de.setHi(rot);
+
+    cpu.setZero(rot == 0);
+    cpu.setNegative(false);
+    cpu.setHalfCarry(false);
+    cpu.setCarry(carry == 1);
+}
+
+// RR D
+fn rrD(cpu: *c.CPU) void {
+    var v: u8 = cpu.de.lo();
+    var carry = v & 1;
+    var rot: u8 = (v >> 1) | (@intCast(u8, @boolToInt(cpu.carry())) << 7);
+    cpu.de.setLo(rot);
 
     cpu.setZero(rot == 0);
     cpu.setNegative(false);
