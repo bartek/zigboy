@@ -8,22 +8,26 @@ pub fn build(b: *std.build.Builder) void {
     // for restricting supported target set are available.
     const target = b.standardTargetOptions(.{});
 
-    // Standard release options allow the person running `zig build` to select
-    // between Debug, ReleaseSafe, ReleaseFast, and ReleaseSmall.
-    const mode = b.standardReleaseOptions();
+    // Standard optimization options allow the person running `zig build` to select
+    // between Debug, ReleaseSafe, ReleaseFast, and ReleaseSmall. Here we do not
+    // set a preferred release mode, allowing the user to decide how to optimize.
+    const optimize = b.standardOptimizeOption(.{});
 
     // Zig SDL Bindings
     const sdk = Sdk.init(b);
 
-    const exe = b.addExecutable("zigboy", "src/main.zig");
+    const exe = b.addExecutable(.{
+        .name = "zigboy",
+        .root_source_file = .{ .path = "src/main.zig" },
+        .target = target,
+        .optimize = optimize,
+    });
 
-    exe.setTarget(target);
     sdk.link(exe, .dynamic);
 
     // Add "sdl2" package that exposes the SDL2 api (like SDL_Init or SDL_CreateWindow)
-    exe.addPackage(sdk.getNativePackage("sdl2"));
-
-    exe.setBuildMode(mode);
+    // FIXME: https://sourcegraph.com/github.com/prime31/zig-gamekit/-/blob/build.zig?L94:9
+    exe.addModule("sdl2", sdk.getNativeModule());
     exe.install();
 
     const run_cmd = exe.run();
