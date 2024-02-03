@@ -13,29 +13,21 @@ pub fn build(b: *std.build.Builder) void {
     // set a preferred release mode, allowing the user to decide how to optimize.
     const optimize = b.standardOptimizeOption(.{});
 
-    // Zig SDL Bindings
-    const sdk = Sdk.init(b);
-
-    const exe = b.addExecutable(.{
+    const zigboy = b.addExecutable(.{
         .name = "zigboy",
         .root_source_file = .{ .path = "src/main.zig" },
         .target = target,
         .optimize = optimize,
     });
 
-    sdk.link(exe, .dynamic);
+    const sdk = Sdk.init(b, null); // SDL2 Init
+    sdk.link(zigboy, .dynamic);
 
     // Add "sdl2" package that exposes the SDL2 api (like SDL_Init or SDL_CreateWindow)
-    // FIXME: https://sourcegraph.com/github.com/prime31/zig-gamekit/-/blob/build.zig?L94:9
-    exe.addModule("sdl2", sdk.getNativeModule());
-    exe.install();
+    zigboy.addModule("sdl2", sdk.getNativeModule());
+    b.installArtifact(zigboy);
 
-    const run_cmd = exe.run();
-    run_cmd.step.dependOn(b.getInstallStep());
-    if (b.args) |args| {
-        run_cmd.addArgs(args);
-    }
-
-    const run_step = b.step("run", "Run the app");
-    run_step.dependOn(&run_cmd.step);
+    const run_exe = b.addRunArtifact(zigboy);
+    const run_step = b.step("run", "Run the application");
+    run_step.dependOn(&run_exe.step);
 }
