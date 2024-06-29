@@ -1,6 +1,29 @@
 const std = @import("std");
+const Atomic = std.atomic.Value;
+
+const Memory = @import("./memory.zig").Memory;
+const SM83 = @import("./cpu.zig").SM83;
+const gameboy = @import("./gameboy.zig");
 
 pub fn main() !void {
+    const allocator = std.heap.page_allocator;
+
+    var memory = try Memory.init(allocator);
+    var cpu = try SM83.init(&memory);
+    var done = Atomic(bool).init(false);
+
+    // Create a separate thread for the emulator to run
+    const thread_gb = try std.Thread.spawn(.{}, gameboy.run_thread, .{ &done, &cpu });
+    defer thread_gb.join();
+
+    var i: usize = 0;
+    // Run
+    while (true) : (i += 1) {
+        // _
+    }
+
+    done.store(true, .Unordered);
+
     // Prints to stderr (it's a shortcut based on `std.io.getStdErr()`)
     std.debug.print("All your {s} are belong to us.\n", .{"codebase"});
 
