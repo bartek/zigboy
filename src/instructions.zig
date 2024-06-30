@@ -1,6 +1,7 @@
 const std = @import("std");
 
 const print = std.debug.print;
+const panic = std.debug.panic;
 const c = @import("./cpu.zig");
 
 // Step is the actual execution of the Opcode
@@ -36,7 +37,7 @@ pub fn operation(_: *c.SM83, opcode: u16) Opcode {
             };
         },
         else => {
-            print("not implemented 0x{x}\n", .{opcode});
+            panic("\n!! not implemented 0x{x}\n", .{opcode});
         },
     }
 
