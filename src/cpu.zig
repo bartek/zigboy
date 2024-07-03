@@ -28,6 +28,28 @@ pub const register = struct {
         return self.value;
     }
 
+    pub fn setLo(self: *register, value: u8) void {
+        self.value = @as(u16, value) | (@as(u16, self.value) & 0xFF00);
+        self.updateMask();
+    }
+
+    pub fn setHi(self: *register, value: u8) void {
+        self.value = @as(u16, value) << 8 | (@as(u16, self.value) & 0xFF);
+        self.updateMask();
+    }
+
+    pub fn hilo(self: *register) u16 {
+        return self.value;
+    }
+
+    pub fn lo(self: *register) u8 {
+        return @as(u8, self.value & 0xFF);
+    }
+
+    pub fn hi(self: *register) u8 {
+        return @as(u8, self.value >> 8);
+    }
+
     fn updateMask(self: *register) void {
         if (self.mask != 0) {
             self.value &= self.mask;
@@ -80,5 +102,3 @@ pub const SM83 = struct {
         return opcode;
     }
 };
-
-test "register test" {}
