@@ -4,6 +4,7 @@ const Allocator = std.mem.Allocator;
 
 const Memory = @import("./memory.zig").Memory;
 const SM83 = @import("cpu.zig").SM83;
+const register = @import("cpu.zig").register;
 
 const Settings = struct {
     a: u8,
@@ -51,9 +52,26 @@ test "00" {
     defer t.deinit();
 
     for (t.value) |tt| {
-        _ = tt;
-        //var memory = try Memory.init(allocator);
-        //var cpu = SM83.init(&memory);
+        std.debug.print("name: {s}\n", .{tt.name});
+        std.debug.print("initial: {d}\n", .{tt.initial.a});
+
+        var af = register.init(0);
+        af.setHi(tt.initial.a);
+        af.setLo(tt.initial.f);
+
+        var memory = try Memory.init(allocator);
+        var cpu = try SM83.init(&memory, .{
+            .af = af,
+            .pc = tt.initial.pc,
+        });
+
+        // TODO: Cycle in tt?
+        const opcode = cpu.tick();
+        std.debug.print("opcode: {}\n", .{opcode});
+
+        try testing.expectEqual(tt.final.pc, cpu.pc);
+
+        //try testing.expectEqual(tt.final.a, cpu.af.hi());
         //cpu.af.setHi(tt.initial.a);
         //cpu.af.setLo(tt.initial.f);
 

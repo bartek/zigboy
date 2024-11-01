@@ -43,11 +43,11 @@ pub const register = struct {
     }
 
     pub fn lo(self: *register) u8 {
-        return @as(u8, self.value & 0xFF);
+        return @intCast(self.value & 0xFF);
     }
 
     pub fn hi(self: *register) u8 {
-        return @as(u8, self.value >> 8);
+        return @intCast(self.value >> 8);
     }
 
     fn updateMask(self: *register) void {
@@ -55,6 +55,11 @@ pub const register = struct {
             self.value &= self.mask;
         }
     }
+};
+
+pub const CPUInitial = struct {
+    af: register,
+    pc: u16,
 };
 
 // SM83 is the CPU for the GameBoy
@@ -72,20 +77,31 @@ pub const SM83 = struct {
 
     memory: *Memory,
 
-    pub fn init(memory: *Memory) !SM83 {
-        return SM83{
+    // init should take initial, and accept the register
+    //
+    // so we can set hi/lo of af and pass that as initial register value
+    // cleaner!
+    pub fn init(memory: *Memory, initial: CPUInitial) !SM83 {
+        var cpu = SM83{
             .memory = memory,
-            .af = register.init(0x01b0),
+            .af = initial.af,
             .bc = register.init(0x0013),
             .de = register.init(0x00D8),
             .hl = register.init(0x014d),
             .pc = 0x0100,
         };
+
+        if (initial.pc > 0) {
+            cpu.pc = initial.pc;
+        }
+
+        return cpu;
     }
 
     // tick ticks the CPU
     pub fn tick(self: *SM83) instructions.Opcode {
         const instruction = instructions.operation(self, self.popPC());
+        std.debug.print("Instruction: {}\n", .{instruction});
         self.execute(instruction);
         return instruction;
     }
