@@ -1,3 +1,13 @@
+# Day 1 - Second Attempt, Second Time
+
+Maybe now? Motivation is rising, winter is here!
+
+https://github.com/isaachier/gbemu/blob/master/src/cpu.zig
+
+What's this Stream concept? Looks interesting.
+
+Also, adding tests to CPU file before I go any further. Helpful.
+
 # Day 0 - Second Attempt
 
 Revisiting the emulator two years later. Let's try and get this project off the ground!

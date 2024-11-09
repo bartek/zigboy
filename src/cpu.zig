@@ -1,4 +1,5 @@
 const std = @import("std");
+const testing = std.testing;
 
 const instructions = @import("./instructions.zig");
 const Memory = @import("./memory.zig").Memory;
@@ -57,45 +58,47 @@ pub const register = struct {
     }
 };
 
-pub const CPUInitial = struct {
+pub const Registers = struct {
     af: register,
-    pc: u16,
+    bc: register,
+    de: register,
+    hl: register,
 };
+
+test "Registers" {
+    var registers: Registers = undefined;
+
+    registers.af = register.init(0xFF11);
+    try testing.expectEqual(registers.af.hi(), 0xFF);
+    try testing.expectEqual(registers.af.lo(), 0x11);
+    registers.af.setHi(0x11);
+    registers.af.setLo(0x55);
+    try testing.expectEqual(registers.af.hi(), 0x11);
+    try testing.expectEqual(registers.af.lo(), 0x55);
+}
 
 // SM83 is the CPU for the GameBoy
 // It is composed of 8 different registers, each of which is a pair of 8-bit
 // registers. These registers are manipulated by the CPU when it executes
 // instructions.
 pub const SM83 = struct {
-    af: register,
-    bc: register,
-    de: register,
-    hl: register,
+    registers: Registers,
 
     // Program counter
     pc: u16,
 
-    memory: *Memory,
+    memory: Memory,
 
     // init should take initial, and accept the register
     //
     // so we can set hi/lo of af and pass that as initial register value
     // cleaner!
-    pub fn init(memory: *Memory, initial: CPUInitial) !SM83 {
-        var cpu = SM83{
-            .memory = memory,
-            .af = initial.af,
-            .bc = register.init(0x0013),
-            .de = register.init(0x00D8),
-            .hl = register.init(0x014d),
+    pub fn init(allocator: std.mem.Allocator) !SM83 {
+        return SM83{
+            .memory = try Memory.init(allocator),
+            .registers = undefined,
             .pc = 0x0100,
         };
-
-        if (initial.pc > 0) {
-            cpu.pc = initial.pc;
-        }
-
-        return cpu;
     }
 
     // tick ticks the CPU
@@ -118,3 +121,48 @@ pub const SM83 = struct {
         return opcode;
     }
 };
+
+// add_and_set_flags performs an add instruction on the input values, storing them using the set
+// function. Also updates flags accordingly
+fn add_and_set_flags(cpu: *SM83, v1: u8, v2: u8) u8 {
+    const total: u8 = v1 +% v2;
+
+    cpu.setZero(total == 0);
+    cpu.setHalfCarry((v1 & 0x0F) + (v2 & 0x0F) > 0x0F);
+    cpu.setCarry(total > 0xFF); // If result is greater than 255
+
+    return total;
+}
+
+fn addAB(cpu: *SM83) void {
+    const v1: u8 = cpu.af.hi();
+    const v2: u8 = cpu.bc.hi();
+
+    const total: u8 = add_and_set_flags(cpu, v1, v2);
+
+    cpu.af.setHi(total);
+}
+
+test "SM83" {
+    var cpu = try SM83.init(std.testing.allocator);
+    cpu.pc = 0;
+    cpu.registers.hl = register.init(0x55);
+    cpu.memory.write(0x0, 0x7E);
+    cpu.memory.write(0x55, 0x20);
+    // TODO: Setup proper assertions and opcode execution. Perhaps from reading the testdata (00.json) and ensuring the initial values match the final/expexted values?
+    _ = try cpu.execute(instructions.Opcode{
+        .label = "ADD A,B",
+        .value = 0x80,
+        .length = 1,
+        .cycles = 4,
+        .step = addAB,
+    });
+
+    std.debug.assert(cpu.registers.a() == 0x20);
+    std.debug.assert(cpu.registers.pc == 1);
+    std.debug.assert(cpu.add(u8, 0x4, 0x6) == 0xA);
+    std.debug.assert(!cpu.registers.halfCarryFlag());
+    std.debug.assert(cpu.add(u8, 0xA, 0x6) == 0x10);
+    std.debug.assert(cpu.registers.halfCarryFlag());
+    cpu.deinit();
+}

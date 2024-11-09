@@ -8,8 +8,7 @@ const gameboy = @import("./gameboy.zig");
 pub fn main() !void {
     const allocator = std.heap.page_allocator;
 
-    var memory = try Memory.init(allocator);
-    var cpu = try SM83.init(&memory);
+    var cpu = try SM83.init(allocator);
     var done = Atomic(bool).init(false);
 
     // Create a separate thread for the emulator to run
