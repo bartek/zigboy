@@ -1,3 +1,7 @@
+## Day 2 std.io.InStream
+
+What is this and how does it work for the CPU? It looks like it's been removed as of  zig 0.13, so what is the updated canonical means of implementing the same behaviour?
+
 # Day 1 - Second Attempt, Second Time
 
 Maybe now? Motivation is rising, winter is here!

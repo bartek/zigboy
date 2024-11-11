@@ -108,13 +108,13 @@ pub const Memory = struct {
                 }
             },
             0xff40 => {
-                self.ppu.write(address, value);
+                // self.ppu.write(address, value);
             },
             0xff44 => {
                 // LY is read-only
             },
             0xff47 => {
-                self.ppu.write(address, value);
+                // self.ppu.write(address, value);
             },
             else => {
                 self.memory[address] = value;

@@ -1,8 +1,9 @@
 const std = @import("std");
 const testing = std.testing;
 
-const instructions = @import("./instructions.zig");
 const Memory = @import("./memory.zig").Memory;
+const bits = @import("./bits.zig");
+const instructions = @import("./instructions.zig");
 
 // register is a virtual 16-bit register which joints two 8-bit registers
 // together. IF the register was AF, A would be the hi byte and F the lo.
@@ -125,9 +126,9 @@ pub const SM83 = struct {
     // flags which allow the CPU to track particular states:
     pub fn setFlag(self: *SM83, comptime bit: u8, on: bool) void {
         if (on) {
-            self.af.setLo(bits.set(self.af.lo(), bit));
+            self.registers.af.setLo(bits.set(self.registers.af.lo(), bit));
         } else {
-            self.af.setLo(bits.clear(self.af.lo(), bit));
+            self.registers.af.setLo(bits.clear(self.registers.af.lo(), bit));
         }
     }
 
@@ -179,8 +180,7 @@ fn ADD_A_B(cpu: *SM83) void {
     const v2: u8 = cpu.registers.bc.hi();
 
     const total: u8 = add_and_set_flags(cpu, v1, v2);
-
-    cpu.af.setHi(total);
+    cpu.registers.af.setHi(total);
 }
 
 test "SM83" {
@@ -199,8 +199,8 @@ test "SM83" {
         .step = ADD_A_B,
     });
 
-    std.debug.assert(cpu.registers.af.hi() == 0x20);
-    std.debug.assert(cpu.pc == 1);
+    try testing.expectEqual(0x20, cpu.registers.af.hi());
+    try testing.expectEqual(1, cpu.pc);
     //std.debug.assert(cpu.add(u8, 0x4, 0x6) == 0xA);
     //std.debug.assert(!cpu.registers.halfCarryFlag());
     //std.debug.assert(cpu.add(u8, 0xA, 0x6) == 0x10);
