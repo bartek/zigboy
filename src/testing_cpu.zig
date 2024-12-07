@@ -4,6 +4,7 @@ const Allocator = std.mem.Allocator;
 
 const Memory = @import("./memory.zig").Memory;
 const SM83 = @import("cpu.zig").SM83;
+const Registers = @import("cpu.zig").Registers;
 const register = @import("cpu.zig").register;
 
 const Settings = struct {
@@ -20,6 +21,7 @@ const Settings = struct {
     ram: [][]u16,
 };
 
+// Test is a test case, as per testdata
 const Test = struct {
     name: []u8,
     initial: Settings,
@@ -33,56 +35,62 @@ fn readFile(allocator: Allocator, path: []const u8) !std.json.Parsed([]Test) {
     return std.json.parseFromSlice([]Test, allocator, data, .{ .allocate = .alloc_always, .ignore_unknown_fields = true });
 }
 
-// load test .json;
-// for test in test.json:
-//     set initial processor state from test;
-//     set initial RAM state from test;
+// Each element in the array is a test case, where we instantiate our CPU
+// based on the initial state form the test case. Then, fetch and execute
+// single instruction.
 //
-//     for cycle in test:
-//         cycle processor
-//         if we are checking cycle-by-cycle:
-//             compare our R/W/MRQ/Address/Data pins against the current cycle;
+// Once done, compare expected state ("final") with actual CPU state.
 //
-//     compare final RAM state to test and report any errors;
-//    compare final processor state to test and report any errors;
-test "00" {
+// Reset for each test case.
+//
+// TODO: For Cycle accuracy, can use expected cycles value from test case.
+test "SM83 00" {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     const allocator = gpa.allocator();
-    const t = try readFile(allocator, "src/testdata/00.json");
+    const t = try readFile(allocator, "testdata/00.json");
     defer t.deinit();
 
     for (t.value) |tt| {
         std.debug.print("name: {s}\n", .{tt.name});
         std.debug.print("initial: {d}\n", .{tt.initial.a});
 
-        //var af = register.init(0);
-        //af.setHi(tt.initial.a);
-        //af.setLo(tt.initial.f);
+        var af = register.init(0x00);
+        af.setHi(tt.initial.a);
+        af.setLo(tt.initial.f);
 
-        //var cpu = try SM83.init(allocator, .{
-        //    .af = af,
-        //    .pc = tt.initial.pc,
-        //});
+        var bc = register.init(0x00);
+        bc.setHi(tt.initial.b);
+        bc.setLo(tt.initial.c);
 
-        //// TODO: Cycle in tt?
-        //const opcode = cpu.tick();
-        //std.debug.print("opcode: {}\n", .{opcode});
+        var de = register.init(0x00);
+        de.setHi(tt.initial.d);
+        de.setLo(tt.initial.e);
 
-        //try testing.expectEqual(tt.final.pc, cpu.pc);
+        var hl = register.init(0x00);
+        hl.setHi(tt.initial.h);
+        hl.setLo(tt.initial.l);
 
-        //try testing.expectEqual(tt.final.a, cpu.af.hi());
-        //cpu.af.setHi(tt.initial.a);
-        //cpu.af.setLo(tt.initial.f);
+        const registers = Registers.init(.{
+            .af = af,
+            .bc = bc,
+            .de = de,
+            .hl = hl,
+        });
+        var cpu = try SM83.init(allocator, registers);
 
-        //cpu.bc.setHi(tt.initial.b);
-        //cpu.bc.setLo(tt.initial.c);
+        const opcode = cpu.tick();
+        std.debug.print("opcode: {}\n", .{opcode});
 
-        //cpu.de.setHi(tt.initial.d);
-        //cpu.de.setLo(tt.initial.e);
+        try testing.expectEqual(tt.final.pc, cpu.pc);
+        try testing.expectEqual(tt.final.a, cpu.registers.af.hi());
+        try testing.expectEqual(tt.final.f, cpu.registers.af.lo());
+        try testing.expectEqual(tt.final.b, cpu.registers.bc.hi());
+        try testing.expectEqual(tt.final.c, cpu.registers.bc.lo());
+        try testing.expectEqual(tt.final.d, cpu.registers.de.hi());
+        try testing.expectEqual(tt.final.e, cpu.registers.de.lo());
+        try testing.expectEqual(tt.final.h, cpu.registers.hl.hi());
+        try testing.expectEqual(tt.final.l, cpu.registers.hl.lo());
 
-        //cpu.hl.setHi(tt.initial.h);
-        //cpu.hl.setLo(tt.initial.l);
-
-        //cpu.pc = tt.initial.pc;
+        break; // Break out of loop for now.
     }
 }

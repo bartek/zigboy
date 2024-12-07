@@ -11,9 +11,9 @@ pub const Cart = struct {
 
     memory: []u8,
 
-    pub fn init(allocator: Allocator) !Self {
+    pub fn init(memory: []u8) !Self {
         return Self{
-            .memory = try allocator.alloc(u8, memory_size),
+            .memory = memory,
         };
     }
 

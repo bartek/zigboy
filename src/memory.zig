@@ -21,10 +21,11 @@ pub const Memory = struct {
     boot_rom_enabled: bool,
 
     pub fn init(allocator: Allocator) !Self {
+        const alloc = try allocator.alloc(u8, memory_size);
         var m = Self{
             .allocator = allocator,
-            .memory = try allocator.alloc(u8, memory_size),
-            .cart = try Cart.init(allocator),
+            .memory = alloc,
+            .cart = try Cart.init(alloc),
             .boot_rom = boot.rom,
             .boot_rom_enabled = true,
         };

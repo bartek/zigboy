@@ -1,3 +1,28 @@
+## Testing 
+
+https://github.com/adtennant/GameboyCPUTests/blob/master/v2/README.md
+
+Each file tests a single opcode.
+You need to parse the JSON into an array of test cases per file.
+For each test case, you'll instantiate your CPU based on the initial state from the test case.
+Then you'll fetch and execute a single instruction.
+Once you're done, you'll compare your CPU to the expected state.
+If there are any mismatches, log the initial, expected, and actual state of your CPU, all three in full.
+If you're going for cycle accuracy, you can use the expected cyclesvalues to compare to your own
+
+
+## Day 3
+
+See instruction table:
+
+https://github.com/tiehuis/zig-gameboy/blob/master/src/cpu.zig
+
+Inspiration:
+
+https://compilerbook.com
+
+Write the book, the emulator. It's possible! 
+
 ## Day 2 std.io.InStream
 
 What is this and how does it work for the CPU? It looks like it's been removed as of  zig 0.13, so what is the updated canonical means of implementing the same behaviour?
@@ -22,7 +47,6 @@ Inspiration: https://www.reddit.com/r/EmuDev/comments/1c2rls3/the_start_of_my_ne
 
 Are there JSON tests for GameBoy? Yes, this is likely what I want. Blargg is an integration test and hurt my progress as well.
 
-https://github.com/adtennant/GameboyCPUTests/blob/master/v2/README.md
 
 # Day 2
 

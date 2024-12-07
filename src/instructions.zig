@@ -36,6 +36,15 @@ pub fn operation(_: *c.SM83, opcode: u16) Opcode {
                 .step = noop,
             };
         },
+        0xaa => {
+            op = .{
+                .label = "XOR A,D",
+                .value = opcode,
+                .length = 1,
+                .cycles = 4,
+                .step = xorAD,
+            };
+        },
         else => {
             panic("\n!! not implemented 0x{x}\n", .{opcode});
         },
@@ -46,4 +55,18 @@ pub fn operation(_: *c.SM83, opcode: u16) Opcode {
 
 fn noop(cpu: *c.SM83) void {
     _ = cpu;
+}
+
+fn xorAD(cpu: *c.SM83) void {
+    const a1: u8 = cpu.registers.af.hi();
+    const a2: u8 = cpu.registers.de.hi();
+
+    const v: u8 = a1 ^ a2;
+    cpu.registers.af.setHi(v);
+
+    // Set flags
+    cpu.setZero(v == 0);
+    cpu.setNegative(false);
+    cpu.setHalfCarry(false);
+    cpu.setCarry(false);
 }
