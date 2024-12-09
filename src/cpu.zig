@@ -214,38 +214,3 @@ fn add_and_set_flags(cpu: *SM83, v1: u8, v2: u8) u8 {
 
     return total;
 }
-
-fn ADD_A_B(cpu: *SM83) void {
-    const v1: u8 = cpu.registers.af.hi();
-    const v2: u8 = cpu.registers.bc.hi();
-
-    const total: u8 = add_and_set_flags(cpu, v1, v2);
-    std.debug.print("Total: {} + {} = {}\n", .{ v1, v2, total });
-    cpu.registers.af.setHi(total);
-}
-
-test "SM83" {
-    //var cpu = try SM83.init(std.testing.allocator, undefined);
-    //defer cpu.deinit();
-    //cpu.pc = 0;
-    //cpu.registers.hl = register.init(0x55);
-    //cpu.memory.write(0x0, 0x7E);
-    //cpu.memory.write(0x55, 0x20);
-
-    //// TODO: Setup proper assertions and opcode execution. Perhaps from reading the testdata (00.json) and ensuring the initial values match the final/expexted values?
-    //cpu.execute(instructions.Opcode{
-    //    .label = "ADD A,B",
-    //    .value = 0x80,
-    //    .length = 1,
-    //    .cycles = 4,
-    //    .step = ADD_A_B,
-    //});
-
-    //try testing.expectEqual(0x20, cpu.registers.af.hi());
-    //try testing.expectEqual(1, cpu.pc);
-    //std.debug.assert(cpu.add(u8, 0x4, 0x6) == 0xA);
-    //std.debug.assert(!cpu.registers.halfCarryFlag());
-    //std.debug.assert(cpu.add(u8, 0xA, 0x6) == 0x10);
-    //std.debug.assert(cpu.registers.halfCarryFlag());
-    //cpu.deinit();
-}

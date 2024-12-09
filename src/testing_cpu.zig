@@ -31,7 +31,7 @@ const Test = struct {
 };
 
 fn readFile(allocator: Allocator, path: []const u8) !std.json.Parsed([]Test) {
-    const data = try std.fs.cwd().readFileAlloc(allocator, path, 89000);
+    const data = try std.fs.cwd().readFileAlloc(allocator, path, 890000);
     defer allocator.free(data);
     return std.json.parseFromSlice([]Test, allocator, data, .{ .allocate = .alloc_always, .ignore_unknown_fields = true });
 }
@@ -48,16 +48,11 @@ fn readFile(allocator: Allocator, path: []const u8) !std.json.Parsed([]Test) {
 test "SM83 00" {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     const allocator = gpa.allocator();
-    const t = try readFile(allocator, "testdata/00.json");
+    const t = try readFile(allocator, "testdata/01.json");
     defer t.deinit();
 
     for (t.value) |tt| {
         std.debug.print("name: {s}\n", .{tt.name});
-
-        for (tt.initial.ram) |row| {
-            // address, value
-            std.debug.print("row {d} {d}\n", .{ row[0], row[1] });
-        }
 
         var af = register.init(0x00);
         af.setHi(tt.initial.a);
@@ -82,14 +77,21 @@ test "SM83 00" {
                 .de = de,
                 .hl = hl,
             }),
-            .pc = tt.initial.pc,
+            // adtennant tests have a design decision were initial and final PC
+            // is off by 1 (compard to the implementation)
+            //
+            // Via https://github.com/adtennant/GameboyCPUTests
+            // The tests assume a decode-execute-prefetch loop and so start at
+            // PC+1, with the final cycle being the prefetch of the next
+            // instruction. See Gameboy CPU Internals for more info.
+            .pc = tt.initial.pc - 1,
             .sp = tt.initial.sp,
             .ram = tt.initial.ram,
         });
 
         _ = cpu.tick();
 
-        try testing.expectEqual(tt.final.pc, cpu.pc);
+        try testing.expectEqual(tt.final.pc - 1, cpu.pc);
         try testing.expectEqual(tt.final.sp, cpu.sp);
         try testing.expectEqual(tt.final.a, cpu.registers.af.hi());
         try testing.expectEqual(tt.final.f, cpu.registers.af.lo());
