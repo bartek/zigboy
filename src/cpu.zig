@@ -104,22 +104,44 @@ pub const SM83 = struct {
     // Program counter
     pc: u16,
 
+    // Stack Pointer
+    sp: u16,
+
     memory: Memory,
 
+    pub const Config = struct {
+        registers: Registers,
+        pc: u16 = 0x0,
+        sp: u16 = 0x0,
+        ram: [][]u16,
+    };
+
     // init initializes the CPU
-    pub fn init(allocator: std.mem.Allocator, registers: Registers) !SM83 {
-        return SM83{
+    pub fn init(allocator: std.mem.Allocator, config: Config) !SM83 {
+        var cpu = SM83{
             .memory = try Memory.init(allocator),
-            .registers = registers,
-            .pc = 0x0,
+            .registers = config.registers,
+            .pc = config.pc,
+            .sp = config.sp,
         };
+
+        for (config.ram) |ram| {
+            const value: u8 = @truncate(ram[1]);
+            std.debug.print("Writing to memory: {d}={d}\n", .{ ram[0], value });
+            cpu.memory.write(ram[0], value);
+        }
+
+        return cpu;
     }
 
     // tick ticks the CPU
     pub fn tick(self: *SM83) instructions.Opcode {
-        const instruction = instructions.operation(self, self.popPC());
-        std.debug.print("Instruction: {}\n", .{instruction});
+        const opcode = self.memory.read(self.pc);
+        std.debug.print("Tick with PC={}: 0x{x}\n", .{ self.pc, opcode });
+        const instruction = instructions.operation(self, opcode);
+        std.debug.print("Instruction: {s}={}\n", .{ instruction.label, instruction });
         self.execute(instruction);
+        self.pc +%= 1;
         return instruction;
     }
 
@@ -129,11 +151,12 @@ pub const SM83 = struct {
         opcode.step(self);
     }
 
-    pub fn popPC(self: *SM83) u8 {
-        const opcode: u8 = self.memory.read(self.pc);
-        self.pc +%= 1;
-        return opcode;
-    }
+    // popPC16 reads two bytes from memory and increments PC twice
+    //pub fn popPC16(self: *SM83) u16 {
+    //    const b1: u16 = self.popPC();
+    //    const b2: u16 = self.popPC();
+    //    return b1 | (b2 << 8);
+    //}
 
     // The F register is a special register because it contains the values of 4
     // flags which allow the CPU to track particular states:

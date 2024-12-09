@@ -6,8 +6,6 @@ const boot = @import("./bootrom.zig");
 const Cart = @import("./cart.zig").Cart;
 
 pub const Memory = struct {
-    const Self = @This();
-
     // Game Boy contains an 8-bit processor, meaning it can access 8-bits of data
     // at one time. To access this data, it has a 16-bit address bus, which can
     // address 65,536 positions of memory.
@@ -20,9 +18,9 @@ pub const Memory = struct {
     boot_rom: [256]u8,
     boot_rom_enabled: bool,
 
-    pub fn init(allocator: Allocator) !Self {
+    pub fn init(allocator: Allocator) !Memory {
         const alloc = try allocator.alloc(u8, memory_size);
-        var m = Self{
+        var m = Memory{
             .allocator = allocator,
             .memory = alloc,
             .cart = try Cart.init(alloc),
@@ -67,11 +65,11 @@ pub const Memory = struct {
         return m;
     }
 
-    pub fn deinit(self: *Self) void {
+    pub fn deinit(self: *Memory) void {
         self.allocator.free(self.memory);
     }
 
-    pub fn read(self: *Self, address: u16) u8 {
+    pub fn read(self: *Memory, address: u16) u8 {
         if (address < 0x100) {
             return self.boot_rom[address];
         }
@@ -92,12 +90,13 @@ pub const Memory = struct {
             //    //return self.ppu.read(address);
             //},
             else => {
+                print("Reading from address: 0x{x}\n", .{address});
                 return self.memory[address];
             },
         }
     }
 
-    pub fn write(self: *Self, address: u16, value: u8) void {
+    pub fn write(self: *Memory, address: u16, value: u8) void {
         switch (address) {
             0xff01 => { // Serial port
                 print("{c}", .{value});
@@ -118,13 +117,14 @@ pub const Memory = struct {
                 // self.ppu.write(address, value);
             },
             else => {
+                std.debug.print("Writing to address: 0x{x}={d}\n", .{ address, value });
                 self.memory[address] = value;
             },
         }
     }
 
     // loadRom loads a buffer into memory
-    pub fn loadRom(self: *Self, buffer: []u8) !void {
+    pub fn loadRom(self: *Memory, buffer: []u8) !void {
         return self.cart.load(buffer);
     }
 };

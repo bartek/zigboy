@@ -5,6 +5,7 @@ const Allocator = std.mem.Allocator;
 const Memory = @import("./memory.zig").Memory;
 const SM83 = @import("cpu.zig").SM83;
 const Registers = @import("cpu.zig").Registers;
+const RamEntry = @import("cpu.zig").RamEntry;
 const register = @import("cpu.zig").register;
 
 const Settings = struct {
@@ -52,7 +53,11 @@ test "SM83 00" {
 
     for (t.value) |tt| {
         std.debug.print("name: {s}\n", .{tt.name});
-        std.debug.print("initial: {d}\n", .{tt.initial.a});
+
+        for (tt.initial.ram) |row| {
+            // address, value
+            std.debug.print("row {d} {d}\n", .{ row[0], row[1] });
+        }
 
         var af = register.init(0x00);
         af.setHi(tt.initial.a);
@@ -70,27 +75,29 @@ test "SM83 00" {
         hl.setHi(tt.initial.h);
         hl.setLo(tt.initial.l);
 
-        const registers = Registers.init(.{
-            .af = af,
-            .bc = bc,
-            .de = de,
-            .hl = hl,
+        var cpu = try SM83.init(allocator, .{
+            .registers = Registers.init(.{
+                .af = af,
+                .bc = bc,
+                .de = de,
+                .hl = hl,
+            }),
+            .pc = tt.initial.pc,
+            .sp = tt.initial.sp,
+            .ram = tt.initial.ram,
         });
-        var cpu = try SM83.init(allocator, registers);
 
-        const opcode = cpu.tick();
-        std.debug.print("opcode: {}\n", .{opcode});
+        _ = cpu.tick();
 
         try testing.expectEqual(tt.final.pc, cpu.pc);
+        try testing.expectEqual(tt.final.sp, cpu.sp);
         try testing.expectEqual(tt.final.a, cpu.registers.af.hi());
         try testing.expectEqual(tt.final.f, cpu.registers.af.lo());
         try testing.expectEqual(tt.final.b, cpu.registers.bc.hi());
         try testing.expectEqual(tt.final.c, cpu.registers.bc.lo());
         try testing.expectEqual(tt.final.d, cpu.registers.de.hi());
         try testing.expectEqual(tt.final.e, cpu.registers.de.lo());
-        try testing.expectEqual(tt.final.h, cpu.registers.hl.hi());
         try testing.expectEqual(tt.final.l, cpu.registers.hl.lo());
-
-        break; // Break out of loop for now.
+        try testing.expectEqual(tt.final.h, cpu.registers.hl.hi());
     }
 }

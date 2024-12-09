@@ -18,17 +18,10 @@ pub const Opcode = struct {
 };
 
 pub fn operation(_: *c.SM83, opcode: u16) Opcode {
-    var op: Opcode = .{
-        .label = undefined,
-        .value = undefined,
-        .length = undefined,
-        .cycles = undefined,
-        .step = undefined,
-    };
-
+    std.debug.print("Operation: 0x{x}\n", .{opcode});
     switch (opcode) {
         0x0 => {
-            op = .{
+            return .{
                 .label = "NOP",
                 .value = opcode,
                 .length = 1,
@@ -37,7 +30,7 @@ pub fn operation(_: *c.SM83, opcode: u16) Opcode {
             };
         },
         0xaa => {
-            op = .{
+            return .{
                 .label = "XOR A,D",
                 .value = opcode,
                 .length = 1,
@@ -45,12 +38,28 @@ pub fn operation(_: *c.SM83, opcode: u16) Opcode {
                 .step = xorAD,
             };
         },
+        0x22 => {
+            return .{
+                .label = "LD (HL+),A",
+                .value = opcode,
+                .length = 3,
+                .cycles = 12,
+                .step = ldiHLA,
+            };
+        },
+        0x31 => {
+            return .{
+                .label = "LD SP,u16",
+                .value = opcode,
+                .length = 3,
+                .cycles = 12,
+                .step = ldSpu16,
+            };
+        },
         else => {
             panic("\n!! not implemented 0x{x}\n", .{opcode});
         },
     }
-
-    return op;
 }
 
 fn noop(cpu: *c.SM83) void {
@@ -61,6 +70,7 @@ fn xorAD(cpu: *c.SM83) void {
     const a1: u8 = cpu.registers.af.hi();
     const a2: u8 = cpu.registers.de.hi();
 
+    std.debug.print("XOR A,D: {d} ^ {d}\n", .{ a1, a2 });
     const v: u8 = a1 ^ a2;
     cpu.registers.af.setHi(v);
 
@@ -69,4 +79,16 @@ fn xorAD(cpu: *c.SM83) void {
     cpu.setNegative(false);
     cpu.setHalfCarry(false);
     cpu.setCarry(false);
+}
+
+// LD SP,16
+fn ldSpu16(cpu: *c.SM83) void {
+    _ = cpu; // cpu.sp = cpu.popPC16();
+}
+
+// LD (HL+),A
+fn ldiHLA(cpu: *c.SM83) void {
+    const v = cpu.registers.hl.hilo();
+    cpu.memory.write(v, cpu.registers.af.hi()); // memory[hl] = a
+    cpu.registers.hl.set(v + 1);
 }
