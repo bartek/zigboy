@@ -135,28 +135,29 @@ pub const SM83 = struct {
     }
 
     // tick ticks the CPU
+    // https://izik1.github.io/gbops/index.html
     pub fn tick(self: *SM83) instructions.Opcode {
-        const opcode = self.memory.read(self.pc);
-        std.debug.print("Tick with PC={}: 0x{x}\n", .{ self.pc, opcode });
+        std.debug.print("Tick with PC={}\n", .{self.pc});
+        const opcode = self.popPC();
         const instruction = instructions.operation(self, opcode);
         std.debug.print("Instruction: {s}={}\n", .{ instruction.label, instruction });
-        self.execute(instruction);
-        self.pc +%= 1;
+        instruction.step(self);
         return instruction;
     }
 
-    // execute accepts an Opcode struct and executes the packed instruction
-    // https://izik1.github.io/gbops/index.html
-    pub fn execute(self: *SM83, opcode: instructions.Opcode) void {
-        opcode.step(self);
+    // popPC reads a single byte from memory and increments PC
+    pub fn popPC(self: *SM83) u8 {
+        const opcode: u8 = self.memory.read(self.pc);
+        self.pc +%= 1;
+        return opcode;
     }
 
     // popPC16 reads two bytes from memory and increments PC twice
-    //pub fn popPC16(self: *SM83) u16 {
-    //    const b1: u16 = self.popPC();
-    //    const b2: u16 = self.popPC();
-    //    return b1 | (b2 << 8);
-    //}
+    pub fn popPC16(self: *SM83) u16 {
+        const b1: u16 = self.popPC();
+        const b2: u16 = self.popPC();
+        return b1 | (b2 << 8);
+    }
 
     // The F register is a special register because it contains the values of 4
     // flags which allow the CPU to track particular states:

@@ -2,6 +2,8 @@ const std = @import("std");
 
 const print = std.debug.print;
 const panic = std.debug.panic;
+const assert = std.debug.assert;
+
 const c = @import("./cpu.zig");
 
 // Step is the actual execution of the Opcode
@@ -14,6 +16,7 @@ pub const Opcode = struct {
     length: u8,
     cycles: u8, // clock cycles
 
+    // Step is the operation for the opcode
     step: Step,
 };
 
@@ -29,6 +32,15 @@ pub fn operation(_: *c.SM83, opcode: u16) Opcode {
                 .step = noop,
             };
         },
+        0x1 => {
+            return .{
+                .label = "LD BC,u16",
+                .value = opcode,
+                .length = 3,
+                .cycles = 12,
+                .step = ldBCu16,
+            };
+        },
         0xaa => {
             return .{
                 .label = "XOR A,D",
@@ -36,6 +48,15 @@ pub fn operation(_: *c.SM83, opcode: u16) Opcode {
                 .length = 1,
                 .cycles = 4,
                 .step = xorAD,
+            };
+        },
+        0x10 => {
+            return .{
+                .label = "STOP",
+                .value = opcode,
+                .length = 1,
+                .cycles = 4,
+                .step = stop,
             };
         },
         0x22 => {
@@ -66,6 +87,21 @@ fn noop(cpu: *c.SM83) void {
     _ = cpu;
 }
 
+// LD <reg>,u16
+//fn ldRegu16(register: c.register) fn (*c.SM83) void {
+//    const Fns = struct {
+//        fn load(cpu: *c.SM83) void {
+//            register.set(cpu.popPC16());
+//        }
+//    };
+//
+//    return Fns.load;
+//}
+
+fn ldBCu16(cpu: *c.SM83) void {
+    cpu.registers.bc.set(cpu.popPC16());
+}
+
 fn xorAD(cpu: *c.SM83) void {
     const a1: u8 = cpu.registers.af.hi();
     const a2: u8 = cpu.registers.de.hi();
@@ -91,4 +127,21 @@ fn ldiHLA(cpu: *c.SM83) void {
     const v = cpu.registers.hl.hilo();
     cpu.memory.write(v, cpu.registers.af.hi()); // memory[hl] = a
     cpu.registers.hl.set(v + 1);
+}
+
+// STOP
+fn stop(cpu: *c.SM83) void {
+    // TODO: gbops says this has changed in understanding since Oct 30 2021
+    // Prior to October 30th, 2021, STOP was referenced as being two bytes
+    // long, however, it is one byte. There is a potentially confusing fact in
+    // that STOP skips one byte after itself. However, it doesn't care what
+    // byte comes after it.
+    //
+    // Pop the next value as the STOP instruction is two bytes long.
+    const s = cpu.popPC();
+    std.debug.print("{x}", .{s});
+
+    //// If the next instruction is not 0x00 this is likely a corrupted
+    //// instruction.
+    //assert(s == 0x00);
 }
