@@ -89,6 +89,8 @@ test "SM83 00" {
             .ram = tt.initial.ram,
         });
 
+        cpu.memory.boot_rom_enabled = false;
+
         _ = cpu.tick();
 
         try testing.expectEqual(tt.final.pc - 1, cpu.pc);

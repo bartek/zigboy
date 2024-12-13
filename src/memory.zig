@@ -70,7 +70,7 @@ pub const Memory = struct {
     }
 
     pub fn read(self: *Memory, address: u16) u8 {
-        if (address < 0x100) {
+        if (self.boot_rom_enabled and address < 0x100) {
             return self.boot_rom[address];
         }
 

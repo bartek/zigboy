@@ -32,7 +32,7 @@ pub fn operation(_: *c.SM83, opcode: u16) Opcode {
                 .step = noop,
             };
         },
-        0x1 => {
+        0x01 => {
             return .{
                 .label = "LD BC,u16",
                 .value = opcode,
@@ -43,6 +43,19 @@ pub fn operation(_: *c.SM83, opcode: u16) Opcode {
                         cpu.registers.bc.set(value);
                     }
                 }.setBC),
+            };
+        },
+        0x06 => {
+            return .{
+                .label = "LD B,u8",
+                .value = opcode,
+                .length = 2,
+                .cycles = 8,
+                .step = ldRegu8(struct {
+                    pub fn setB(cpu: *c.SM83, value: u8) void {
+                        cpu.registers.bc.setHi(value);
+                    }
+                }.setB),
             };
         },
         0xaa => {
@@ -89,6 +102,15 @@ pub fn operation(_: *c.SM83, opcode: u16) Opcode {
 
 fn noop(cpu: *c.SM83) void {
     _ = cpu;
+}
+
+// LD <reg>,u8
+fn ldRegu8(comptime setter: *const fn (*c.SM83, u8) void) fn (*c.SM83) void {
+    return struct {
+        pub fn load(cpu: *c.SM83) void {
+            setter(cpu, cpu.popPC());
+        }
+    }.load;
 }
 
 // LD <reg>,u16
