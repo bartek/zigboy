@@ -45,6 +45,15 @@ pub fn operation(_: *c.SM83, opcode: u16) Opcode {
                 }.setBC),
             };
         },
+        0x02 => {
+            return .{
+                .label = "LD (BC),A",
+                .value = opcode,
+                .length = 1,
+                .cycles = 8,
+                .step = ldBCA,
+            };
+        },
         0x06 => {
             return .{
                 .label = "LD B,u8",
@@ -122,8 +131,19 @@ fn ldRegu16(comptime setter: *const fn (*c.SM83, u16) void) fn (*c.SM83) void {
     }.load;
 }
 
-fn ldBCu16(cpu: *c.SM83) void {
-    cpu.registers.bc.set(cpu.popPC16());
+// LD (<reg2:u16>),<reg1:u8>
+// Load <reg1:u8> into memory address <reg2:u16>
+fn ldRegMem(comptime setter: *const fn (*c.SM83, u8, u16) void) fn (*c.SM83) void {
+    return struct {
+        pub fn load(cpu: *c.SM83) void {
+            setter(cpu, cpu.registers.af.hi(), cpu.registers.hl.hilo());
+        }
+    }.load;
+}
+
+// LD (BC),A
+fn ldBCA(cpu: *c.SM83) void {
+    cpu.memory.write(cpu.registers.bc.hilo(), cpu.registers.af.hi());
 }
 
 fn xorAD(cpu: *c.SM83) void {

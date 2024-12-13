@@ -36,19 +36,10 @@ fn readFile(allocator: Allocator, path: []const u8) !std.json.Parsed([]Test) {
     return std.json.parseFromSlice([]Test, allocator, data, .{ .allocate = .alloc_always, .ignore_unknown_fields = true });
 }
 
-// Each element in the array is a test case, where we instantiate our CPU
-// based on the initial state form the test case. Then, fetch and execute
-// single instruction.
-//
-// Once done, compare expected state ("final") with actual CPU state.
-//
-// Reset for each test case.
-//
-// TODO: For Cycle accuracy, can use expected cycles value from test case.
-test "SM83 00" {
-    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
-    const allocator = gpa.allocator();
-    const t = try readFile(allocator, "testdata/01.json");
+fn testFile(allocator: Allocator, path: []const u8) !void {
+    std.debug.print("path: {s}\n", .{path});
+    const result = try std.mem.concat(allocator, u8, &.{ "testdata/", path });
+    const t = try readFile(allocator, result);
     defer t.deinit();
 
     for (t.value) |tt| {
@@ -103,5 +94,33 @@ test "SM83 00" {
         try testing.expectEqual(tt.final.e, cpu.registers.de.lo());
         try testing.expectEqual(tt.final.l, cpu.registers.hl.lo());
         try testing.expectEqual(tt.final.h, cpu.registers.hl.hi());
+    }
+}
+
+// Each element in the array is a test case, where we instantiate our CPU
+// based on the initial state form the test case. Then, fetch and execute
+// single instruction.
+//
+// Once done, compare expected state ("final") with actual CPU state.
+//
+// Reset for each test case.
+//
+// TODO: For Cycle accuracy, can use expected cycles value from test case.
+test "SM83 00" {
+    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
+    const allocator = gpa.allocator();
+
+    // List all files in testdata and read those one by one, as test cases
+    var dir = try std.fs.cwd().openDir("testdata", .{ .iterate = true });
+    defer dir.close();
+
+    var walker = try dir.walk(allocator);
+    defer walker.deinit();
+
+    while (try walker.next()) |entry| {
+        switch (entry.kind) {
+            .file => try testFile(allocator, entry.path),
+            else => std.debug.print("dir: {s}\n", .{entry.path}),
+        }
     }
 }
