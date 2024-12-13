@@ -38,7 +38,11 @@ pub fn operation(_: *c.SM83, opcode: u16) Opcode {
                 .value = opcode,
                 .length = 3,
                 .cycles = 12,
-                .step = ldBCu16,
+                .step = ldRegu16(struct {
+                    pub fn setBC(cpu: *c.SM83, value: u16) void {
+                        cpu.registers.bc.set(value);
+                    }
+                }.setBC),
             };
         },
         0xaa => {
@@ -88,15 +92,13 @@ fn noop(cpu: *c.SM83) void {
 }
 
 // LD <reg>,u16
-//fn ldRegu16(register: c.register) fn (*c.SM83) void {
-//    const Fns = struct {
-//        fn load(cpu: *c.SM83) void {
-//            register.set(cpu.popPC16());
-//        }
-//    };
-//
-//    return Fns.load;
-//}
+fn ldRegu16(comptime setter: *const fn (*c.SM83, u16) void) fn (*c.SM83) void {
+    return struct {
+        pub fn load(cpu: *c.SM83) void {
+            setter(cpu, cpu.popPC16());
+        }
+    }.load;
+}
 
 fn ldBCu16(cpu: *c.SM83) void {
     cpu.registers.bc.set(cpu.popPC16());
