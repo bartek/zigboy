@@ -12,7 +12,6 @@ pub const Step = *const fn (cpu: *c.SM83) void;
 // Opcode is an instruction for the CPU
 pub const Opcode = struct {
     label: []const u8, // e.g. "XOR A,A"
-    value: u16, // e.g. 0x31
     length: u8,
     cycles: u8, // clock cycles
 
@@ -26,7 +25,6 @@ pub fn operation(_: *c.SM83, opcode: u16) Opcode {
         0x0 => {
             return .{
                 .label = "NOP",
-                .value = opcode,
                 .length = 1,
                 .cycles = 4,
                 .step = noop,
@@ -35,7 +33,6 @@ pub fn operation(_: *c.SM83, opcode: u16) Opcode {
         0x01 => {
             return .{
                 .label = "LD BC,u16",
-                .value = opcode,
                 .length = 3,
                 .cycles = 12,
                 .step = ldRegu16(struct {
@@ -48,7 +45,6 @@ pub fn operation(_: *c.SM83, opcode: u16) Opcode {
         0x02 => {
             return .{
                 .label = "LD (BC),A",
-                .value = opcode,
                 .length = 1,
                 .cycles = 8,
                 .step = ldBCA,
@@ -57,7 +53,6 @@ pub fn operation(_: *c.SM83, opcode: u16) Opcode {
         0x06 => {
             return .{
                 .label = "LD B,u8",
-                .value = opcode,
                 .length = 2,
                 .cycles = 8,
                 .step = ldRegu8(struct {
@@ -70,7 +65,6 @@ pub fn operation(_: *c.SM83, opcode: u16) Opcode {
         0xaa => {
             return .{
                 .label = "XOR A,D",
-                .value = opcode,
                 .length = 1,
                 .cycles = 4,
                 .step = xorAD,
@@ -79,7 +73,6 @@ pub fn operation(_: *c.SM83, opcode: u16) Opcode {
         0x10 => {
             return .{
                 .label = "STOP",
-                .value = opcode,
                 .length = 1,
                 .cycles = 4,
                 .step = stop,
@@ -88,7 +81,6 @@ pub fn operation(_: *c.SM83, opcode: u16) Opcode {
         0x22 => {
             return .{
                 .label = "LD (HL+),A",
-                .value = opcode,
                 .length = 3,
                 .cycles = 12,
                 .step = ldiHLA,
@@ -97,7 +89,6 @@ pub fn operation(_: *c.SM83, opcode: u16) Opcode {
         0x31 => {
             return .{
                 .label = "LD SP,u16",
-                .value = opcode,
                 .length = 3,
                 .cycles = 12,
                 .step = ldSpu16,
