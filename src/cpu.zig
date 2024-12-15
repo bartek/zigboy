@@ -159,6 +159,14 @@ pub const SM83 = struct {
         return b1 | (b2 << 8);
     }
 
+    // pushStack pushes two bytes onto the stack and decrements stack pointer
+    // twice
+    pub fn pushStack(self: *SM83, value: u16) void {
+        self.memory.write(self.sp - 1, @truncate(value >> 8)); // High byte
+        self.memory.write(self.sp - 2, @truncate(value & 0xFF)); // Low byte
+        self.sp -= 2;
+    }
+
     // The F register is a special register because it contains the values of 4
     // flags which allow the CPU to track particular states:
     pub fn setFlag(self: *SM83, comptime bit: u8, on: bool) void {
@@ -176,7 +184,7 @@ pub const SM83 = struct {
 
     // Carry Flag. Used by conditional jumps and instructions such as ADC, SBC, RL, RLA, etc.
     pub fn carry(self: *SM83) bool {
-        return self.af.hilo() >> 4 & 1 == 1;
+        return self.registers.af.hilo() >> 4 & 1 == 1;
     }
 
     // setZ sets the zero flag

@@ -94,6 +94,22 @@ pub fn operation(_: *c.SM83, opcode: u16) Opcode {
                 .step = ldSpu16,
             };
         },
+        0x4f => {
+            return .{
+                .label = "LD C,A",
+                .length = 1,
+                .cycles = 4,
+                .step = ldCA,
+            };
+        },
+        0xd4 => {
+            return .{
+                .label = "CALL NC,u16",
+                .length = 3,
+                .cycles = 12,
+                .step = callNCu16,
+            };
+        },
         else => {
             panic("\n!! not implemented 0x{x}\n", .{opcode});
         },
@@ -102,6 +118,21 @@ pub fn operation(_: *c.SM83, opcode: u16) Opcode {
 
 fn noop(cpu: *c.SM83) void {
     _ = cpu;
+}
+
+// CALL NZ,u16
+// Perform a CALL operation by pushing the current PC to the stack and jumping
+// to the next address, only if Z is false
+fn callNCu16(cpu: *c.SM83) void {
+    const address: u16 = cpu.popPC16();
+    if (!cpu.carry()) {
+        cpu.pushStack(cpu.pc);
+        cpu.pc = address;
+    }
+}
+
+fn ldCA(cpu: *c.SM83) void {
+    cpu.registers.bc.setLo(cpu.registers.af.hi());
 }
 
 // LD <reg>,u8
