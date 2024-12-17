@@ -22,93 +22,83 @@ pub const Opcode = struct {
 pub fn operation(_: *c.SM83, opcode: u16) Opcode {
     std.debug.print("Operation: 0x{x}\n", .{opcode});
     switch (opcode) {
-        0x0 => {
-            return .{
-                .label = "NOP",
-                .length = 1,
-                .cycles = 4,
-                .step = noop,
-            };
+        0x0 => .{
+            .label = "NOP",
+            .length = 1,
+            .cycles = 4,
+            .step = noop,
         },
-        0x01 => {
-            return .{
-                .label = "LD BC,u16",
-                .length = 3,
-                .cycles = 12,
-                .step = ldRegu16(struct {
-                    pub fn setBC(cpu: *c.SM83, value: u16) void {
-                        cpu.registers.bc.set(value);
-                    }
-                }.setBC),
-            };
+        0x01 => .{
+            .label = "LD BC,u16",
+            .length = 3,
+            .cycles = 12,
+            .step = ldRegu16(struct {
+                pub fn setBC(cpu: *c.SM83, value: u16) void {
+                    cpu.registers.bc.set(value);
+                }
+            }.setBC),
         },
-        0x02 => {
-            return .{
-                .label = "LD (BC),A",
-                .length = 1,
-                .cycles = 8,
-                .step = ldBCA,
-            };
+        0x02 => .{
+            .label = "LD (BC),A",
+            .length = 1,
+            .cycles = 8,
+            .step = ldBCA,
         },
-        0x06 => {
-            return .{
-                .label = "LD B,u8",
-                .length = 2,
-                .cycles = 8,
-                .step = ldRegu8(struct {
-                    pub fn setB(cpu: *c.SM83, value: u8) void {
-                        cpu.registers.bc.setHi(value);
-                    }
-                }.setB),
-            };
+        0x06 => .{
+            .label = "LD B,u8",
+            .length = 2,
+            .cycles = 8,
+            .step = ldRegu8(struct {
+                pub fn setB(cpu: *c.SM83, value: u8) void {
+                    cpu.registers.bc.setHi(value);
+                }
+            }.setB),
         },
-        0xaa => {
-            return .{
-                .label = "XOR A,D",
-                .length = 1,
-                .cycles = 4,
-                .step = xorAD,
-            };
+        0xaa => .{
+            .label = "XOR A,D",
+            .length = 1,
+            .cycles = 4,
+            .step = xorAD,
         },
-        0x10 => {
-            return .{
-                .label = "STOP",
-                .length = 1,
-                .cycles = 4,
-                .step = stop,
-            };
+        0x10 => .{
+            .label = "STOP",
+            .length = 1,
+            .cycles = 4,
+            .step = stop,
         },
-        0x22 => {
-            return .{
-                .label = "LD (HL+),A",
-                .length = 3,
-                .cycles = 12,
-                .step = ldiHLA,
-            };
+        0x1a => .{
+            .label = "LD A,(DE)",
+            .length = 1,
+            .cycles = 8,
+            .step = struct {
+                fn ldADE(cpu: *c.SM83) void {
+                    cpu.registers.af.setHi(cpu.memory.read(cpu.registers.de.hilo()));
+                }
+            }.ldADE,
         },
-        0x31 => {
-            return .{
-                .label = "LD SP,u16",
-                .length = 3,
-                .cycles = 12,
-                .step = ldSpu16,
-            };
+        0x22 => .{
+            .label = "LD (HL+),A",
+            .length = 3,
+            .cycles = 12,
+            .step = ldiHLA,
         },
-        0x4f => {
-            return .{
-                .label = "LD C,A",
-                .length = 1,
-                .cycles = 4,
-                .step = ldCA,
-            };
+        0x31 => .{
+            .label = "LD SP,u16",
+            .length = 3,
+            .cycles = 12,
+            .step = ldSpu16,
         },
-        0xd4 => {
-            return .{
-                .label = "CALL NC,u16",
-                .length = 3,
-                .cycles = 12,
-                .step = callNCu16,
-            };
+        0x4f => .{
+            .label = "LD C,A",
+            .length = 1,
+            .cycles = 4,
+            .step = ldCA,
+        },
+        0xd4 => .{
+            .label = "CALL NC,u16",
+            .length = 3,
+            .cycles = 12,
+            .step = callNCu16,
         },
         else => {
             panic("\n!! not implemented 0x{x}\n", .{opcode});
