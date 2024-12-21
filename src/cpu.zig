@@ -144,8 +144,8 @@ pub const SM83 = struct {
         const arg_len = instructions.OP_ARG_BYTES[arg_type];
 
         // Jump instructions must be set prior to incrementing PC
-        const jump_arg = instructions.jump_op(self, self.pc + 1, arg_type);
-        self.pc += 1 + arg_len;
+        const jump_arg = instructions.jump_op(self, self.pc +% 1, arg_type);
+        self.pc +%= 1 + arg_len;
 
         // TODO: Read OP_CYCLES
         instructions.operation(self, opcode, jump_arg);

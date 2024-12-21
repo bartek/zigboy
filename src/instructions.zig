@@ -126,7 +126,7 @@ pub fn operation(cpu: *c.SM83, opcode: u16, arg: OpArg) void {
         0x05, 0x0D, 0x15, 0x1D, 0x25, 0x2D, 0x35, 0x3D => { // DEC r
             const v = cpu.getRegister((opcode - 0x05) / 8);
 
-            cpu.setHalfCarry((v -% 1 % 0x0f) == 0x0f);
+            cpu.setHalfCarry((v -% 1 & 0x0f) == 0x0f);
             cpu.setZero(v -% 1 == 0);
             cpu.setNegative(true);
 
