@@ -110,6 +110,19 @@ pub fn operation(cpu: *c.SM83, opcode: u16, arg: OpArg) void {
         0x02 => {
             cpu.memory.write(cpu.registers.bc.hilo(), cpu.registers.af.hi());
         },
+        0x03 => {
+            cpu.registers.bc.set(cpu.registers.bc.hilo() +% 1);
+        },
+        0x04, 0x14, 0x24, 0x0C, 0x1C, 0x2C, 0x3C => {
+            const v = cpu.getRegister((opcode - 0x04) / 8);
+
+            cpu.setHalfCarry((v & 0x0f) == 0x0f);
+            cpu.setZero(v +% 1 == 0);
+            cpu.setNegative(false);
+
+            const vo: u8 = @intCast(opcode - 0x04);
+            cpu.setRegister(vo / 8, v +% 1);
+        },
         0x06 => {
             cpu.registers.bc.setHi(arg.u8);
         },

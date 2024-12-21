@@ -164,6 +164,18 @@ pub const SM83 = struct {
         };
     }
 
+    pub fn setRegister(self: *SM83, n: u8, value: u8) void {
+        switch (@as(u3, @intCast(n & 0x07))) {
+            0 => self.registers.bc.setHi(value),
+            1 => self.registers.bc.setLo(value),
+            2 => self.registers.de.setHi(value),
+            3 => self.registers.de.setLo(value),
+            4 => self.registers.hl.setHi(value),
+            5 => self.registers.hl.setLo(value),
+            6 => self.memory.write(self.registers.hl.hilo(), value),
+            7 => self.registers.af.setHi(value),
+        }
+    }
     // pushStack pushes two bytes onto the stack and decrements stack pointer
     // twice
     pub fn pushStack(self: *SM83, value: u16) void {
