@@ -6,9 +6,6 @@ const assert = std.debug.assert;
 
 const c = @import("./cpu.zig");
 
-// Step is the actual execution of the Opcode
-pub const Step = *const fn (cpu: *c.SM83) void;
-
 pub const OpArg = packed union {
     u8: u8, // B
     i8: i8, // b
@@ -74,16 +71,6 @@ pub const OP_CB_CYCLES = [_]u8{
     2, 2, 2, 2, 2, 2, 4, 2, 2, 2, 2, 2, 2, 2, 4, 2, // D
     2, 2, 2, 2, 2, 2, 4, 2, 2, 2, 2, 2, 2, 2, 4, 2, // E
     2, 2, 2, 2, 2, 2, 4, 2, 2, 2, 2, 2, 2, 2, 4, 2, // F
-};
-
-// Opcode is an instruction for the CPU
-pub const Opcode = struct {
-    label: []const u8, // e.g. "XOR A,A"
-    length: u8,
-    cycles: u8, // clock cycles
-
-    // Step is the operation for the opcode
-    step: Step,
 };
 
 pub fn jump_op(cpu: *c.SM83, addr: u16, arg_type: u2) OpArg {
