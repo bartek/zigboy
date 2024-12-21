@@ -113,7 +113,7 @@ pub fn operation(cpu: *c.SM83, opcode: u16, arg: OpArg) void {
         0x03 => {
             cpu.registers.bc.set(cpu.registers.bc.hilo() +% 1);
         },
-        0x04, 0x14, 0x24, 0x0C, 0x1C, 0x2C, 0x3C => {
+        0x04, 0x14, 0x24, 0x0C, 0x1C, 0x2C, 0x3C => { // INC r
             const v = cpu.getRegister((opcode - 0x04) / 8);
 
             cpu.setHalfCarry((v & 0x0f) == 0x0f);
@@ -122,6 +122,16 @@ pub fn operation(cpu: *c.SM83, opcode: u16, arg: OpArg) void {
 
             const vo: u8 = @intCast(opcode - 0x04);
             cpu.setRegister(vo / 8, v +% 1);
+        },
+        0x05, 0x0D, 0x15, 0x1D, 0x25, 0x2D, 0x35, 0x3D => { // DEC r
+            const v = cpu.getRegister((opcode - 0x05) / 8);
+
+            cpu.setHalfCarry((v -% 1 % 0x0f) == 0x0f);
+            cpu.setZero(v -% 1 == 0);
+            cpu.setNegative(true);
+
+            const vo: u8 = @intCast(opcode - 0x05);
+            cpu.setRegister(vo / 8, v -% 1);
         },
         0x06 => {
             cpu.registers.bc.setHi(arg.u8);
