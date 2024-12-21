@@ -149,8 +149,6 @@ pub const SM83 = struct {
 
         // TODO: Read OP_CYCLES
         instructions.operation(self, opcode, jumpArg);
-        //std.debug.print("Instruction: {s}={}\n", .{ instruction.label, instruction });
-        //return instruction;
     }
 
     pub fn getRegister(self: *SM83, n: u16) u8 {

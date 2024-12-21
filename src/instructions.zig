@@ -118,13 +118,15 @@ pub fn operation(cpu: *c.SM83, opcode: u16, arg: OpArg) void {
                 cpu.pc = @as(u16, @intCast(@as(i32, @intCast(cpu.pc)) + arg.i8));
             }
         },
-        0xa8...0xaf => {},
-        //.{
-        //            .label = "XOR A,D",
-        //            .length = 1,
-        //            .cycles = 4,
-        //            .step = xorAD,
-        //        },
+        0xa8...0xaf => {
+            const v = cpu.getRegister(opcode);
+            cpu.registers.af.setHi(cpu.registers.af.hi() ^ v);
+
+            cpu.setZero(cpu.registers.af.hi() == 0);
+            cpu.setNegative(false);
+            cpu.setHalfCarry(false);
+            cpu.setCarry(false);
+        },
         0xa3 => {
             const total: u8 = cpu.registers.af.hi() & cpu.registers.de.lo();
             cpu.registers.af.setHi(total);
@@ -158,12 +160,6 @@ pub fn operation(cpu: *c.SM83, opcode: u16, arg: OpArg) void {
         0xe2 => {
             cpu.memory.write(0xff00 | @as(u16, cpu.registers.bc.lo()), cpu.registers.af.hi());
         },
-        //0x10 => .{
-        //    .label = "STOP",
-        //    .length = 1,
-        //    .cycles = 4,
-        //    .step = stop,
-        //},
         0x1a => {
             cpu.registers.af.setHi(cpu.memory.read(cpu.registers.de.hilo()));
         },
@@ -192,100 +188,4 @@ pub fn operation(cpu: *c.SM83, opcode: u16, arg: OpArg) void {
             panic("\n!! not implemented 0x{x}\n", .{opcode});
         },
     };
-}
-
-fn noop(cpu: *c.SM83) void {
-    _ = cpu;
-}
-
-// CALL NZ,u16
-// Perform a CALL operation by pushing the current PC to the stack and jumping
-// to the next address, only if Z is false
-fn callNCu16(cpu: *c.SM83) void {
-    const address: u16 = cpu.popPC16();
-    if (!cpu.carry()) {
-        cpu.pushStack(cpu.pc);
-        cpu.pc = address;
-    }
-}
-
-fn ldCA(cpu: *c.SM83) void {
-    cpu.registers.bc.setLo(cpu.registers.af.hi());
-}
-
-// LD <reg>,u8
-fn ldRegu8(comptime setter: *const fn (*c.SM83, u8) void) fn (*c.SM83) void {
-    return struct {
-        pub fn load(cpu: *c.SM83) void {
-            setter(cpu, cpu.popPC());
-        }
-    }.load;
-}
-
-// LD <reg>,u16
-fn ldRegu16(comptime setter: *const fn (*c.SM83, u16) void) fn (*c.SM83) void {
-    return struct {
-        pub fn load(cpu: *c.SM83) void {
-            setter(cpu, cpu.popPC16());
-        }
-    }.load;
-}
-
-// LD (<reg2:u16>),<reg1:u8>
-// Load <reg1:u8> into memory address <reg2:u16>
-fn ldRegMem(comptime setter: *const fn (*c.SM83, u8, u16) void) fn (*c.SM83) void {
-    return struct {
-        pub fn load(cpu: *c.SM83) void {
-            setter(cpu, cpu.registers.af.hi(), cpu.registers.hl.hilo());
-        }
-    }.load;
-}
-
-// LD (BC),A
-fn ldBCA(cpu: *c.SM83) void {
-    cpu.memory.write(cpu.registers.bc.hilo(), cpu.registers.af.hi());
-}
-
-fn xorAD(cpu: *c.SM83) void {
-    const a1: u8 = cpu.registers.af.hi();
-    const a2: u8 = cpu.registers.de.hi();
-
-    std.debug.print("XOR A,D: {d} ^ {d}\n", .{ a1, a2 });
-    const v: u8 = a1 ^ a2;
-    cpu.registers.af.setHi(v);
-
-    // Set flags
-    cpu.setZero(v == 0);
-    cpu.setNegative(false);
-    cpu.setHalfCarry(false);
-    cpu.setCarry(false);
-}
-
-// LD SP,16
-fn ldSpu16(cpu: *c.SM83) void {
-    _ = cpu; // cpu.sp = cpu.popPC16();
-}
-
-// LD (HL+),A
-fn ldiHLA(cpu: *c.SM83) void {
-    const v = cpu.registers.hl.hilo();
-    cpu.memory.write(v, cpu.registers.af.hi()); // memory[hl] = a
-    cpu.registers.hl.set(v + 1);
-}
-
-// STOP
-fn stop(cpu: *c.SM83) void {
-    // TODO: gbops says this has changed in understanding since Oct 30 2021
-    // Prior to October 30th, 2021, STOP was referenced as being two bytes
-    // long, however, it is one byte. There is a potentially confusing fact in
-    // that STOP skips one byte after itself. However, it doesn't care what
-    // byte comes after it.
-    //
-    // Pop the next value as the STOP instruction is two bytes long.
-    const s = cpu.popPC();
-    std.debug.print("{x}", .{s});
-
-    //// If the next instruction is not 0x00 this is likely a corrupted
-    //// instruction.
-    //assert(s == 0x00);
 }
