@@ -111,7 +111,7 @@ pub fn operation(cpu: *c.SM83, opcode: u16, arg: OpArg) void {
             cpu.memory.write(cpu.registers.bc.hilo(), cpu.registers.af.hi());
         },
         0x06 => {
-            cpu.registers.bc.setHi(cpu.popPC());
+            cpu.registers.bc.setHi(arg.u8);
         },
         0x20 => {
             if (!cpu.zero()) {
@@ -183,10 +183,9 @@ pub fn operation(cpu: *c.SM83, opcode: u16, arg: OpArg) void {
             cpu.registers.bc.setLo(cpu.registers.af.hi());
         },
         0xd4 => {
-            const address: u16 = cpu.popPC16();
             if (!cpu.carry()) {
-                cpu.pushStack(cpu.pc);
-                cpu.pc = address;
+                cpu.pushStack(arg.u16);
+                cpu.pc = arg.u16;
             }
         },
         else => {

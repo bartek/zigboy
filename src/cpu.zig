@@ -138,7 +138,6 @@ pub const SM83 = struct {
     // https://izik1.github.io/gbops/index.html
     pub fn tick(self: *SM83) void {
         std.debug.print("Tick with PC={}\n", .{self.pc});
-        //const opcode = self.popPC();
         const opcode: u8 = self.memory.read(self.pc);
 
         const argType = instructions.OP_TYPES[opcode];
@@ -165,20 +164,6 @@ pub const SM83 = struct {
             6 => self.memory.read(self.registers.hl.hilo()),
             7 => self.registers.af.hi(),
         };
-    }
-
-    // popPC reads a single byte from memory and increments PC
-    pub fn popPC(self: *SM83) u8 {
-        const opcode: u8 = self.memory.read(self.pc);
-        self.pc +%= 1;
-        return opcode;
-    }
-
-    // popPC16 reads two bytes from memory and increments PC twice
-    pub fn popPC16(self: *SM83) u16 {
-        const b1: u16 = self.popPC();
-        const b2: u16 = self.popPC();
-        return b1 | (b2 << 8);
     }
 
     // pushStack pushes two bytes onto the stack and decrements stack pointer
