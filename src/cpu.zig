@@ -140,15 +140,15 @@ pub const SM83 = struct {
         std.debug.print("Tick with PC={}\n", .{self.pc});
         const opcode: u8 = self.memory.read(self.pc);
 
-        const argType = instructions.OP_TYPES[opcode];
-        const argLen = instructions.OP_ARG_BYTES[argType];
+        const arg_type = instructions.OP_TYPES[opcode];
+        const arg_len = instructions.OP_ARG_BYTES[arg_type];
 
         // Jump instructions must be set prior to incrementing PC
-        const jumpArg = instructions.jump_op(self, self.pc + 1, argType);
-        self.pc += 1 + argLen;
+        const jump_arg = instructions.jump_op(self, self.pc + 1, arg_type);
+        self.pc += 1 + arg_len;
 
         // TODO: Read OP_CYCLES
-        instructions.operation(self, opcode, jumpArg);
+        instructions.operation(self, opcode, jump_arg);
     }
 
     pub fn getRegister(self: *SM83, n: u16) u8 {
