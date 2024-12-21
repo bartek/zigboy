@@ -68,14 +68,7 @@ fn testFile(allocator: Allocator, path: []const u8) !void {
                 .de = de,
                 .hl = hl,
             }),
-            // adtennant tests have a design decision were initial and final PC
-            // is off by 1 (compard to the implementation)
-            //
-            // Via https://github.com/adtennant/GameboyCPUTests
-            // The tests assume a decode-execute-prefetch loop and so start at
-            // PC+1, with the final cycle being the prefetch of the next
-            // instruction. See Gameboy CPU Internals for more info.
-            .pc = tt.initial.pc - 1,
+            .pc = tt.initial.pc,
             .sp = tt.initial.sp,
             .ram = tt.initial.ram,
         });
@@ -84,7 +77,7 @@ fn testFile(allocator: Allocator, path: []const u8) !void {
 
         _ = cpu.tick();
 
-        try testing.expectEqual(tt.final.pc - 1, cpu.pc);
+        try testing.expectEqual(tt.final.pc, cpu.pc);
         try testing.expectEqual(tt.final.sp, cpu.sp);
         try testing.expectEqual(tt.final.a, cpu.registers.af.hi());
         try testing.expectEqual(tt.final.f, cpu.registers.af.lo());

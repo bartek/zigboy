@@ -136,13 +136,35 @@ pub const SM83 = struct {
 
     // tick ticks the CPU
     // https://izik1.github.io/gbops/index.html
-    pub fn tick(self: *SM83) instructions.Opcode {
+    pub fn tick(self: *SM83) void {
         std.debug.print("Tick with PC={}\n", .{self.pc});
-        const opcode = self.popPC();
-        const instruction = instructions.operation(self, opcode);
-        std.debug.print("Instruction: {s}={}\n", .{ instruction.label, instruction });
-        instruction.step(self);
-        return instruction;
+        //const opcode = self.popPC();
+        const opcode: u8 = self.memory.read(self.pc);
+
+        const argType = instructions.OP_TYPES[opcode];
+        const argLen = instructions.OP_ARG_BYTES[argType];
+
+        // Jump instructions must be set prior to incrementing PC
+        const jumpArg = instructions.jump_op(self, self.pc + 1, argType);
+        self.pc += 1 + argLen;
+
+        // TODO: Read OP_CYCLES
+        instructions.operation(self, opcode, jumpArg);
+        //std.debug.print("Instruction: {s}={}\n", .{ instruction.label, instruction });
+        //return instruction;
+    }
+
+    pub fn getRegister(self: *SM83, n: u16) u8 {
+        return switch (@as(u3, @intCast(n & 0x07))) {
+            0 => self.registers.bc.hi(),
+            1 => self.registers.bc.lo(),
+            2 => self.registers.de.hi(),
+            3 => self.registers.de.lo(),
+            4 => self.registers.hl.hi(),
+            5 => self.registers.hl.lo(),
+            6 => self.memory.read(self.registers.hl.hilo()),
+            7 => self.registers.af.hi(),
+        };
     }
 
     // popPC reads a single byte from memory and increments PC
@@ -179,7 +201,7 @@ pub const SM83 = struct {
 
     // Zero Flag. Set when the result of a mathemetical instruction is zero
     pub fn zero(self: *SM83) bool {
-        return self.af.hilo() >> 7 & 1 == 1;
+        return self.registers.af.hilo() >> 7 & 1 == 1;
     }
 
     // Carry Flag. Used by conditional jumps and instructions such as ADC, SBC, RL, RLA, etc.
