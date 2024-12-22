@@ -186,8 +186,16 @@ pub fn operation(cpu: *c.SM83, opcode: u16, arg: OpArg) void {
         0x16 => {
             cpu.registers.de.setHi(arg.u8);
         },
-        0x20 => {
-            if (!cpu.zero()) {
+        0x18, 0x20, 0x28, 0x30, 0x38 => { // JUMP i8
+            const should_jump = switch (opcode) {
+                0x18 => true,
+                0x20 => !cpu.zero(),
+                0x28 => cpu.zero(),
+                0x30 => !cpu.carry(),
+                0x38 => cpu.carry(),
+                else => false, // NOP, unexpected
+            };
+            if (should_jump) {
                 cpu.pc = @as(u16, @intCast(@as(i32, @intCast(cpu.pc)) + arg.i8));
             }
         },
