@@ -136,6 +136,42 @@ pub fn operation(cpu: *c.SM83, opcode: u16, arg: OpArg) void {
         0x06 => {
             cpu.registers.bc.setHi(arg.u8);
         },
+        0x07 => { // RCLA
+            cpu.setCarry((cpu.registers.af.hi() & 1 << 7) != 0);
+            cpu.registers.af.setHi((cpu.registers.af.hi() << 1) | (cpu.registers.af.hi() >> 7));
+
+            // TODO: Rest of RC
+
+            cpu.setNegative(false);
+            cpu.setHalfCarry(false);
+            cpu.setZero(false);
+        },
+        0x08 => { // LD (u16),SP
+            cpu.memory.write(arg.u16 + 1, @as(u8, @intCast((cpu.sp >> 8) & 0xff)));
+            cpu.memory.write(arg.u16, @as(u8, @intCast(cpu.sp & 0xff)));
+        },
+        0x09, 0x19, 0x29, 0x39 => { // ADD HL,rr
+            const v = switch (opcode) {
+                0x09 => cpu.registers.bc.hilo(),
+                0x19 => cpu.registers.de.hilo(),
+                0x29 => cpu.registers.hl.hilo(),
+                0x39 => cpu.sp,
+                else => 0,
+            };
+
+            cpu.setHalfCarry((cpu.registers.hl.hilo() & 0x0fff) + (v & 0x0fff) > 0x0fff);
+            cpu.setCarry(@as(u32, cpu.registers.hl.hilo()) + @as(u32, v) > 0xffff);
+            cpu.registers.hl.set(cpu.registers.hl.hilo() +% v);
+            cpu.setNegative(false);
+        },
+        0x10 => {}, // STOP. noop has dmg games don't use STOP, so not implementing
+        0x11 => {
+            cpu.registers.de.set(arg.u16);
+        },
+        0x12 => {
+            std.debug.print("af is {d}", .{cpu.registers.af.hi()});
+            cpu.memory.write(cpu.registers.de.hilo(), cpu.registers.af.hi());
+        },
         0x20 => {
             if (!cpu.zero()) {
                 cpu.pc = @as(u16, @intCast(@as(i32, @intCast(cpu.pc)) + arg.i8));

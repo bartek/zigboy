@@ -1,4 +1,5 @@
 const std = @import("std");
+const panic = std.debug.panic;
 const Allocator = std.mem.Allocator;
 const print = std.debug.print;
 
@@ -108,19 +109,23 @@ pub const Memory = struct {
                 }
             },
             0xff40 => {
+                panic("not implemented write to address {}", .{address});
                 // self.ppu.write(address, value);
             },
             0xff44 => {
+                panic("not implemented write to address {}", .{address});
                 // LY is read-only
             },
             0xff47 => {
+                panic("not implemented write to address {}", .{address});
                 // self.ppu.write(address, value);
             },
             else => {
-                std.debug.print("Writing to address: 0x{x}={d}\n", .{ address, value });
-                self.memory[address] = value;
+                std.debug.print("Not implemented", .{});
             },
         }
+        std.debug.print("Writing to address: 0x{x}={d}\n", .{ address, value });
+        self.memory[address] = value;
     }
 
     // loadRom loads a buffer into memory

@@ -127,7 +127,7 @@ pub const SM83 = struct {
 
         for (config.ram) |ram| {
             const value: u8 = @truncate(ram[1]);
-            std.debug.print("Writing to memory: {d}={d}\n", .{ ram[0], value });
+            std.debug.print("Initializing memory: 0x{x}={d}\n", .{ ram[0], value });
             cpu.memory.write(ram[0], value);
         }
 
@@ -138,6 +138,7 @@ pub const SM83 = struct {
     // https://izik1.github.io/gbops/index.html
     pub fn tick(self: *SM83) void {
         std.debug.print("Tick with PC={}\n", .{self.pc});
+
         const opcode: u8 = self.memory.read(self.pc);
 
         const arg_type = instructions.OP_TYPES[opcode];
