@@ -109,15 +109,12 @@ pub const Memory = struct {
                 }
             },
             0xff40 => {
-                panic("not implemented write to address {}", .{address});
                 // self.ppu.write(address, value);
             },
             0xff44 => {
-                panic("not implemented write to address {}", .{address});
                 // LY is read-only
             },
             0xff47 => {
-                panic("not implemented write to address {}", .{address});
                 // self.ppu.write(address, value);
             },
             else => {

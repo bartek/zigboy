@@ -136,11 +136,19 @@ pub fn operation(cpu: *c.SM83, opcode: u16, arg: OpArg) void {
         0x06 => {
             cpu.registers.bc.setHi(arg.u8);
         },
-        0x07 => { // RCLA
-            cpu.setCarry((cpu.registers.af.hi() & 1 << 7) != 0);
-            cpu.registers.af.setHi((cpu.registers.af.hi() << 1) | (cpu.registers.af.hi() >> 7));
-
-            // TODO: Rest of RC
+        0x07, 0x17 => { // RCLA, RLA
+            const carry: u8 = if (cpu.carry()) 1 else 0;
+            switch (opcode) {
+                0x07 => { // RCLA
+                    cpu.setCarry((cpu.registers.af.hi() & 1 << 7) != 0);
+                    cpu.registers.af.setHi((cpu.registers.af.hi() << 1) | (cpu.registers.af.hi() >> 7));
+                },
+                0x17 => { // RLA
+                    cpu.setCarry((cpu.registers.af.hi() & 1 << 7) != 0);
+                    cpu.registers.af.setHi((cpu.registers.af.hi() << 1) | carry);
+                },
+                else => {}, // NOP
+            }
 
             cpu.setNegative(false);
             cpu.setHalfCarry(false);
@@ -171,6 +179,12 @@ pub fn operation(cpu: *c.SM83, opcode: u16, arg: OpArg) void {
         0x12 => {
             std.debug.print("af is {d}", .{cpu.registers.af.hi()});
             cpu.memory.write(cpu.registers.de.hilo(), cpu.registers.af.hi());
+        },
+        0x13 => {
+            cpu.registers.de.set(cpu.registers.de.hilo() +% 1);
+        },
+        0x16 => {
+            cpu.registers.de.setHi(arg.u8);
         },
         0x20 => {
             if (!cpu.zero()) {
