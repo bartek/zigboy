@@ -175,6 +175,16 @@ pub fn operation(cpu: *c.SM83, opcode: u8, arg: OpArg) void {
             cpu.registers.hl.set(cpu.registers.hl.hilo() +% v);
             cpu.setNegative(false);
         },
+        0x98...0x9f => { // SBC A,r
+            const v = cpu.getRegister(opcode);
+            const carry: u8 = if (cpu.carry()) 1 else 0;
+            const res: i16 = @as(i16, @intCast(cpu.registers.af.hi())) -% @as(i16, @intCast(v)) -% @as(i16, @intCast(carry));
+            cpu.setHalfCarry((cpu.registers.af.hi() ^ v ^ (res & 0x0ff)) & (1 << 4) != 0);
+            cpu.setCarry(res < 0);
+            cpu.registers.af.setHi(cpu.registers.af.hi() -% v -% carry);
+            cpu.setZero(cpu.registers.af.hi() == 0);
+            cpu.setNegative(true);
+        },
         0x33 => {
             cpu.sp = cpu.sp +% 1;
         },
