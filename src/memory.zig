@@ -10,6 +10,7 @@ pub const Memory = struct {
     // Game Boy contains an 8-bit processor, meaning it can access 8-bits of data
     // at one time. To access this data, it has a 16-bit address bus, which can
     // address 65,536 positions of memory.
+    // http://gameboy.mongenel.com/dmg/asmmemmap.html
     const memory_size = 65536;
 
     cart: Cart,
@@ -71,30 +72,7 @@ pub const Memory = struct {
     }
 
     pub fn read(self: *Memory, address: u16) u8 {
-        if (self.boot_rom_enabled and address < 0x100) {
-            return self.boot_rom[address];
-        }
-
-        if (address < 0x8000) {
-            return self.cart.read(address);
-        }
-
-        switch (address) {
-            //0xff40 => {
-            //    //return self.ppu.read(address);
-            //},
-            0xff44 => {
-                return 0x90;
-                //return self.ppu.read(address);
-            },
-            //0xff47 => {
-            //    //return self.ppu.read(address);
-            //},
-            else => {
-                print("Reading from address: 0x{x}\n", .{address});
-                return self.memory[address];
-            },
-        }
+        return self.memory[address];
     }
 
     pub fn write(self: *Memory, address: u16, value: u8) void {
@@ -117,9 +95,7 @@ pub const Memory = struct {
             0xff47 => {
                 // self.ppu.write(address, value);
             },
-            else => {
-                std.debug.print("Not implemented", .{});
-            },
+            else => {},
         }
         std.debug.print("Writing to address: 0x{x}={d}\n", .{ address, value });
         self.memory[address] = value;

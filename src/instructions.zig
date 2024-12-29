@@ -100,7 +100,7 @@ pub fn operation_cb(cpu: *c.SM83, opcode: u16) void {
     };
 }
 
-pub fn operation(cpu: *c.SM83, opcode: u16, arg: OpArg) void {
+pub fn operation(cpu: *c.SM83, opcode: u8, arg: OpArg) void {
     std.debug.print("Operation: 0x{x}\n", .{opcode});
     return switch (opcode) {
         0x0 => {}, // NOP
@@ -113,7 +113,10 @@ pub fn operation(cpu: *c.SM83, opcode: u16, arg: OpArg) void {
         0x03 => {
             cpu.registers.bc.set(cpu.registers.bc.hilo() +% 1);
         },
-        0x04, 0x14, 0x24, 0x0C, 0x1C, 0x2C, 0x3C => { // INC r
+        0x23 => {
+            cpu.registers.hl.set(cpu.registers.hl.hilo() +% 1);
+        },
+        0x04, 0x14, 0x24, 0x0C, 0x1C, 0x2C, 0x34, 0x3C => { // INC r
             const v = cpu.getRegister((opcode - 0x04) / 8);
 
             cpu.setHalfCarry((v & 0x0f) == 0x0f);
@@ -133,8 +136,8 @@ pub fn operation(cpu: *c.SM83, opcode: u16, arg: OpArg) void {
             const vo: u8 = @intCast(opcode - 0x05);
             cpu.setRegister(vo / 8, v -% 1);
         },
-        0x06 => {
-            cpu.registers.bc.setHi(arg.u8);
+        0x06, 0x36 => { // LD r,n
+            cpu.setRegister((opcode - 0x06) / 8, arg.u8);
         },
         0x07, 0x17 => { // RCLA, RLA
             const carry: u8 = if (cpu.carry()) 1 else 0;
@@ -172,6 +175,17 @@ pub fn operation(cpu: *c.SM83, opcode: u16, arg: OpArg) void {
             cpu.registers.hl.set(cpu.registers.hl.hilo() +% v);
             cpu.setNegative(false);
         },
+        0x33 => {
+            cpu.sp = cpu.sp +% 1;
+        },
+        0x37 => { // SCF
+            cpu.setNegative(false);
+            cpu.setHalfCarry(false);
+            cpu.setCarry(true);
+        },
+        0x40...0x7F => { // LD r,r
+            cpu.setRegister((opcode - 0x40) >> 3, cpu.getRegister(opcode - 0x40));
+        },
         0x10 => {}, // STOP. noop has dmg games don't use STOP, so not implementing
         0x11 => {
             cpu.registers.de.set(arg.u16);
@@ -190,7 +204,7 @@ pub fn operation(cpu: *c.SM83, opcode: u16, arg: OpArg) void {
             const should_jump = switch (opcode) {
                 0x18 => true,
                 0x20 => !cpu.zero(),
-                0x28 => cpu.zero(),
+                0x28 => cpu.zero(), // TODO: Test failing
                 0x30 => !cpu.carry(),
                 0x38 => cpu.carry(),
                 else => false, // NOP, unexpected
@@ -199,7 +213,60 @@ pub fn operation(cpu: *c.SM83, opcode: u16, arg: OpArg) void {
                 cpu.pc = @as(u16, @intCast(@as(i32, @intCast(cpu.pc)) + arg.i8));
             }
         },
-        0xa8...0xaf => {
+        0x21 => { // TODO: Test case failing after after a set amount of iterations.
+            cpu.registers.hl.set(arg.u16);
+        },
+        0x22 => {
+            cpu.memory.write(cpu.registers.hl.hilo(), cpu.registers.af.hi());
+            cpu.registers.hl.set(cpu.registers.hl.hilo() +% 1);
+        },
+        0x26 => {
+            cpu.registers.hl.setHi(arg.u8);
+        },
+        0x27 => { // DAA
+            var v: u16 = cpu.registers.af.hi();
+            if (!cpu.negative()) {
+                if (cpu.halfCarry() or (v & 0x0f) > 9) {
+                    v = v +% 6;
+                }
+                if (cpu.carry() or v > 0x9f) {
+                    v = v +% 0x60;
+                }
+            } else {
+                if (cpu.halfCarry()) {
+                    v = v -% 6;
+                    if (!cpu.carry()) {
+                        v &= 0xFF;
+                    }
+                }
+                if (cpu.carry()) {
+                    v = v -% 0x60;
+                }
+            }
+
+            cpu.setHalfCarry(false);
+            if (v & 0x100 != 0) {
+                cpu.setCarry(true);
+            }
+            cpu.registers.af.setHi(@as(u8, @intCast(v & 0xff)));
+            cpu.setZero(cpu.registers.af.hi() == 0);
+        },
+        0x31 => {
+            cpu.sp = arg.u16;
+        },
+        0x32 => {
+            cpu.memory.write(cpu.registers.hl.hilo(), cpu.registers.af.hi());
+            cpu.registers.hl.set(cpu.registers.hl.hilo() -% 1);
+        },
+        0x90...0x97 => { // SUB
+            const v = cpu.getRegister(opcode);
+            cpu.setCarry(cpu.registers.af.hi() < v);
+            cpu.setHalfCarry((cpu.registers.af.hi() & 0x0f) < (v & 0x0f));
+            cpu.registers.af.setHi(cpu.registers.af.hi() -% v);
+            cpu.setZero(cpu.registers.af.hi() == 0);
+            cpu.setNegative(true);
+        },
+        0xa8...0xaf => { // XOR
             const v = cpu.getRegister(opcode);
             cpu.registers.af.setHi(cpu.registers.af.hi() ^ v);
 
@@ -243,21 +310,6 @@ pub fn operation(cpu: *c.SM83, opcode: u16, arg: OpArg) void {
         },
         0x1a => {
             cpu.registers.af.setHi(cpu.memory.read(cpu.registers.de.hilo()));
-        },
-        //0x22 => .{
-        //    .label = "LD (HL+),A",
-        //    .length = 3,
-        //    .cycles = 12,
-        //    .step = ldiHLA,
-        //},
-        //0x31 => .{
-        //    .label = "LD SP,u16",
-        //    .length = 3,
-        //    .cycles = 12,
-        //    .step = ldSpu16,
-        //},
-        0x4f => {
-            cpu.registers.bc.setLo(cpu.registers.af.hi());
         },
         0xd4 => {
             if (!cpu.carry()) {

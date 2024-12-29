@@ -205,6 +205,15 @@ pub const SM83 = struct {
         return self.registers.af.hilo() >> 4 & 1 == 1;
     }
 
+    // Half Carry Flag. Used for BCD arithmetic
+    pub fn halfCarry(self: *SM83) bool {
+        return self.registers.af.hilo() >> 5 & 1 == 1;
+    }
+
+    pub fn negative(self: *SM83) bool {
+        return self.registers.af.hilo() >> 6 & 1 == 1;
+    }
+
     // setZ sets the zero flag
     pub fn setZero(self: *SM83, on: bool) void {
         self.setFlag(7, on);
