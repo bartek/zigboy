@@ -185,6 +185,12 @@ pub const SM83 = struct {
         self.sp -= 2;
     }
 
+    pub fn pop(self: *SM83) u16 {
+        const v = (@as(u16, self.memory.read(self.sp + 1)) << 8) | @as(u16, self.memory.read(self.sp));
+        self.sp += 2;
+        return v;
+    }
+
     // The F register is a special register because it contains the values of 4
     // flags which allow the CPU to track particular states:
     pub fn setFlag(self: *SM83, comptime bit: u8, on: bool) void {

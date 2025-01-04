@@ -175,6 +175,33 @@ pub fn operation(cpu: *c.SM83, opcode: u8, arg: OpArg) void {
             cpu.registers.hl.set(cpu.registers.hl.hilo() +% v);
             cpu.setNegative(false);
         },
+        0x80...0x87 => { // ADD A,r
+            const v = cpu.getRegister(opcode);
+            const res: i16 = @as(i16, @intCast(cpu.registers.af.hi())) +% @as(i16, @intCast(v));
+            cpu.setHalfCarry((cpu.registers.af.hi() & 0x0f) + (v & 0x0f) > 0x0f);
+            cpu.setCarry(res > 0xff);
+            cpu.registers.af.setHi(cpu.registers.af.hi() +% v);
+            cpu.setZero(cpu.registers.af.hi() == 0);
+            cpu.setNegative(false);
+        },
+        0x88...0x8f => { // ADC A,r
+            const v = cpu.getRegister(opcode);
+            const carry: u8 = if (cpu.carry()) 1 else 0;
+            const res: i16 = @as(i16, @intCast(cpu.registers.af.hi())) +% @as(i16, @intCast(v)) +% @as(i16, @intCast(carry));
+            cpu.setHalfCarry((cpu.registers.af.hi() & 0x0f) + (v & 0x0f) + carry > 0x0f);
+            cpu.setCarry(res > 0xff);
+            cpu.registers.af.setHi(cpu.registers.af.hi() +% v +% carry);
+            cpu.setZero(cpu.registers.af.hi() == 0);
+            cpu.setNegative(false);
+        },
+        0x90...0x97 => { // SUB A,r
+            const v = cpu.getRegister(opcode);
+            cpu.setCarry(cpu.registers.af.hi() < v);
+            cpu.setHalfCarry((cpu.registers.af.hi() & 0x0f) < (v & 0x0f));
+            cpu.registers.af.setHi(cpu.registers.af.hi() -% v);
+            cpu.setZero(cpu.registers.af.hi() == 0);
+            cpu.setNegative(true);
+        },
         0x98...0x9f => { // SBC A,r
             const v = cpu.getRegister(opcode);
             const carry: u8 = if (cpu.carry()) 1 else 0;
@@ -268,14 +295,6 @@ pub fn operation(cpu: *c.SM83, opcode: u8, arg: OpArg) void {
             cpu.memory.write(cpu.registers.hl.hilo(), cpu.registers.af.hi());
             cpu.registers.hl.set(cpu.registers.hl.hilo() -% 1);
         },
-        0x90...0x97 => { // SUB
-            const v = cpu.getRegister(opcode);
-            cpu.setCarry(cpu.registers.af.hi() < v);
-            cpu.setHalfCarry((cpu.registers.af.hi() & 0x0f) < (v & 0x0f));
-            cpu.registers.af.setHi(cpu.registers.af.hi() -% v);
-            cpu.setZero(cpu.registers.af.hi() == 0);
-            cpu.setNegative(true);
-        },
         0xa8...0xaf => { // XOR
             const v = cpu.getRegister(opcode);
             cpu.registers.af.setHi(cpu.registers.af.hi() ^ v);
@@ -321,11 +340,56 @@ pub fn operation(cpu: *c.SM83, opcode: u8, arg: OpArg) void {
         0x1a => {
             cpu.registers.af.setHi(cpu.memory.read(cpu.registers.de.hilo()));
         },
+        0xc3 => {
+            cpu.pc = arg.u16;
+        },
+        0xcd => {
+            cpu.pushStack(cpu.pc);
+            cpu.pc = arg.u16;
+        },
+        0xd8 => { // RET C
+            if (cpu.carry()) {
+                cpu.pc = cpu.pop();
+            }
+        },
+        0xdc => { // CALL C,u16
+            if (cpu.carry()) {
+                cpu.pushStack(cpu.pc);
+                cpu.pc = arg.u16;
+            }
+        },
+        0xee => { // XOR A,u8
+            cpu.registers.af.setHi(cpu.registers.af.hi() ^ arg.u8);
+            cpu.setZero(cpu.registers.af.hi() == 0);
+            cpu.setCarry(false);
+            cpu.setNegative(false);
+            cpu.setHalfCarry(false);
+        },
+        0xb0...0xb7 => { // OR
+            cpu.registers.af.setHi(cpu.registers.af.hi() | cpu.getRegister(opcode));
+            cpu.setZero(cpu.registers.af.hi() == 0);
+            cpu.setNegative(false);
+            cpu.setCarry(false);
+            cpu.setHalfCarry(false);
+        },
         0xd4 => {
             if (!cpu.carry()) {
                 cpu.pushStack(arg.u16);
                 cpu.pc = arg.u16;
             }
+        },
+        0xf8 => { // LD HL,SP+i8 // TODO: Skipped for now as failing
+            const v = @as(i32, @intCast(cpu.sp)) + arg.i8;
+            if (arg.i8 >= 0) {
+                cpu.setCarry((@as(i32, @intCast(cpu.sp & 0xFF)) + (arg.i8)) > 0xFF);
+                cpu.setHalfCarry((@as(i32, @intCast(cpu.sp & 0x0F)) + (arg.i8 & 0x0F)) > 0x0F);
+            } else {
+                cpu.setCarry((v & 0xFF) <= (cpu.sp & 0xFF));
+                cpu.setHalfCarry((v & 0x0F) <= (cpu.sp & 0x0F));
+            }
+            cpu.registers.hl.set(@as(u16, @intCast(v)));
+            cpu.setZero(false);
+            cpu.setNegative(false);
         },
         else => {
             panic("\n!! not implemented 0x{x}\n", .{opcode});
