@@ -184,6 +184,15 @@ pub fn operation(cpu: *c.SM83, opcode: u8, arg: OpArg) void {
             cpu.setZero(cpu.registers.af.hi() == 0);
             cpu.setNegative(false);
         },
+        0xce => { // ADC A,u8
+            const carry: u8 = if (cpu.carry()) 1 else 0;
+            const res: i16 = @as(i16, @intCast(cpu.registers.af.hi())) +% @as(i16, @intCast(arg.u8)) +% @as(i16, @intCast(carry));
+            cpu.setHalfCarry((cpu.registers.af.hi() & 0x0f) + (arg.u8 & 0x0f) + carry > 0x0f);
+            cpu.setCarry(res > 0xff);
+            cpu.registers.af.setHi(cpu.registers.af.hi() +% arg.u8 +% carry);
+            cpu.setZero(cpu.registers.af.hi() == 0);
+            cpu.setNegative(false);
+        },
         0x88...0x8f => { // ADC A,r
             const v = cpu.getRegister(opcode);
             const carry: u8 = if (cpu.carry()) 1 else 0;
@@ -193,6 +202,16 @@ pub fn operation(cpu: *c.SM83, opcode: u8, arg: OpArg) void {
             cpu.registers.af.setHi(cpu.registers.af.hi() +% v +% carry);
             cpu.setZero(cpu.registers.af.hi() == 0);
             cpu.setNegative(false);
+        },
+        0xb8...0xbf => { // CP r
+            const v = cpu.getRegister(opcode);
+            const a: u8 = cpu.registers.af.hi();
+            const total: u8 = a -% v;
+
+            cpu.setZero(total == 0);
+            cpu.setNegative(true);
+            cpu.setHalfCarry((a & 0x0f) < (v & 0x0f));
+            cpu.setCarry(a < v);
         },
         0x90...0x97 => { // SUB A,r
             const v = cpu.getRegister(opcode);
@@ -313,27 +332,6 @@ pub fn operation(cpu: *c.SM83, opcode: u8, arg: OpArg) void {
             cpu.setHalfCarry(true);
             cpu.setCarry(false);
         },
-        0xb9 => {
-            // TODO: Do range 0xb8..0xBf all CP
-            const a: u8 = cpu.registers.af.hi();
-            const rc: u8 = cpu.registers.bc.lo();
-            const total: u8 = a -% rc;
-
-            cpu.setZero(total == 0);
-            cpu.setNegative(true);
-            cpu.setHalfCarry((a & 0x0f) < (rc & 0x0f));
-            cpu.setCarry(a < rc);
-        },
-        0xbb => {
-            const a: u8 = cpu.registers.af.hi();
-            const e: u8 = cpu.registers.de.lo();
-            const total: u8 = a -% e;
-
-            cpu.setZero(total == 0);
-            cpu.setNegative(true);
-            cpu.setHalfCarry((a & 0x0f) < (e & 0x0f));
-            cpu.setCarry(a < e);
-        },
         0xe2 => {
             cpu.memory.write(0xff00 | @as(u16, cpu.registers.bc.lo()), cpu.registers.af.hi());
         },
@@ -351,6 +349,10 @@ pub fn operation(cpu: *c.SM83, opcode: u8, arg: OpArg) void {
             if (cpu.carry()) {
                 cpu.pc = cpu.pop();
             }
+        },
+        0xd9 => { // RETI
+            cpu.pc = cpu.pop();
+            cpu.interrupts = true;
         },
         0xdc => { // CALL C,u16
             if (cpu.carry()) {
@@ -411,6 +413,18 @@ pub fn operation(cpu: *c.SM83, opcode: u8, arg: OpArg) void {
             cpu.registers.hl.set(@as(u16, @intCast(v)));
             cpu.setZero(false);
             cpu.setNegative(false);
+        },
+        0xf9 => {
+            cpu.sp = cpu.registers.hl.hilo();
+        },
+        // Misc Instructions
+        0x2f => { // CPL
+            cpu.registers.af.setHi(cpu.registers.af.hi() ^ 0xff);
+            cpu.setNegative(true);
+            cpu.setHalfCarry(true);
+        },
+        0xfb => { // EI
+            cpu.interrupts = true;
         },
         else => {
             panic("\n!! not implemented 0x{x}\n", .{opcode});

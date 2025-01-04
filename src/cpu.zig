@@ -109,6 +109,8 @@ pub const SM83 = struct {
 
     memory: Memory,
 
+    interrupts: bool,
+
     pub const Config = struct {
         registers: Registers,
         pc: u16 = 0x0,
@@ -123,6 +125,7 @@ pub const SM83 = struct {
             .registers = config.registers,
             .pc = config.pc,
             .sp = config.sp,
+            .interrupts = false,
         };
 
         for (config.ram) |ram| {
