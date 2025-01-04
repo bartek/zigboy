@@ -372,6 +372,27 @@ pub fn operation(cpu: *c.SM83, opcode: u8, arg: OpArg) void {
             cpu.setCarry(false);
             cpu.setHalfCarry(false);
         },
+        0x3a => {
+            cpu.registers.af.setHi(cpu.memory.read(cpu.registers.hl.hilo()));
+            cpu.registers.hl.set(cpu.registers.hl.hilo() -% 1);
+        },
+        0xc2 => {
+            if (!cpu.zero()) {
+                cpu.pc = arg.u16;
+            }
+        },
+        0xf5 => { // PUSH AF
+            cpu.pushStack(cpu.registers.af.hilo());
+        },
+        0xc5 => { // PUSH BC
+            cpu.pushStack(cpu.registers.bc.hilo());
+        },
+        0xd5 => { // PUSH DE
+            cpu.pushStack(cpu.registers.de.hilo());
+        },
+        0xe5 => { // PUSH HL
+            cpu.pushStack(cpu.registers.hl.hilo());
+        },
         0xd4 => {
             if (!cpu.carry()) {
                 cpu.pushStack(arg.u16);
